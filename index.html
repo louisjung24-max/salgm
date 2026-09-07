@@ -21,6 +21,10 @@
   body.unlocked #gear,body.unlocked #lock{opacity:.75}
   body.unlocked #lock .shackle{transform:translate(4px,-2px) rotate(20deg);transform-origin:16px 11px}
   body:not(.unlocked) #topics .t{pointer-events:none}
+  #topbar{position:relative}
+  #tip{position:absolute;right:12px;top:calc(100% + 2px);background:var(--ink);color:var(--paper);font-size:14px;padding:8px 12px;border-radius:10px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .25s;z-index:4}
+  #tip::before{content:"";position:absolute;right:18px;top:-6px;border:6px solid transparent;border-top:0;border-bottom-color:var(--ink)}
+  #tip.show{opacity:1}
   #topics::-webkit-scrollbar{display:none}
   .t{flex:0 0 auto;border:1.5px solid var(--line);border-radius:999px;padding:8px 15px;background:transparent;color:var(--ink);font-size:15px;opacity:.6;transition:opacity .4s,background .4s}
   .t.sel{opacity:1;background:#fff8;border-color:var(--ink)}
@@ -65,7 +69,7 @@
 </style>
 </head>
 <body>
-<div id="topbar"><button id="lock" aria-label="잠금"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="shackle" d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button><button id="gear" aria-label="어른용 설정">•••</button></div>
+<div id="topbar"><button id="lock" aria-label="잠금"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="shackle" d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button><button id="gear" aria-label="어른용 설정">•••</button><div id="tip">잠금을 풀어주세요</div></div>
 <div id="topics"></div>
 <div id="stage"><div class="card" id="a"></div><div class="card" id="b"></div></div>
 <div id="dim"></div>
@@ -80,7 +84,7 @@
   <div class="lab">소리</div><div class="row" id="sound"></div>
   <div class="lab">엄마·아빠 목소리</div><div class="row"><button class="chip" id="openRec">낱말 녹음하기</button></div>
   <button class="close" id="close">돌아가기</button>
-  <div class="lab" style="margin-top:4px;font-weight:400">v11</div>
+  <div class="lab" style="margin-top:4px;font-weight:400">v12</div>
 </div>
 <div id="recorder">
   <h2>낱말 녹음</h2>
@@ -343,7 +347,10 @@ function openSettings(){ settings.classList.add('open'); clearTimeout(timer); cl
 const gear=document.getElementById('gear'), lockBtn=document.getElementById('lock');
 const isUnlocked=()=>document.body.classList.contains('unlocked');
 lockBtn.addEventListener('click',e=>{e.stopPropagation();document.body.classList.toggle('unlocked');});
-gear.addEventListener('click',e=>{e.stopPropagation(); if(isUnlocked()) openSettings();});
+const tip=document.getElementById('tip'); let tipT=null;
+gear.addEventListener('click',e=>{e.stopPropagation(); if(isUnlocked()){openSettings();return;}
+  tip.classList.add('show'); clearTimeout(tipT); tipT=setTimeout(()=>tip.classList.remove('show'),1800);});
+lockBtn.addEventListener('click',()=>{tip.classList.remove('show');});
 document.getElementById('close').onclick=()=>{settings.classList.remove('open');document.body.classList.remove('unlocked');applyNight();armSleep();if(asleep)wake();else show();};
 function chips(id,list,isSel,onPick){
   const box=document.getElementById(id); box.innerHTML='';
