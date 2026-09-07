@@ -9,35 +9,29 @@
 <title>살금살금</title>
 <link rel="manifest" href="manifest.json">
 <style>
-  :root{
-    --paper:#EDE7DC;   /* 배경: 채도 낮은 리넨색 */
-    --ink:#5B5750;     /* 글자: 부드러운 회갈색 */
-    --sage:#A9B8A3;
-    --sky:#A7B9C7;
-    --peach:#D9B8A8;
-    --butter:#DFD3A8;
-    --lilac:#BDB2C6;
-  }
+  :root{--paper:#EDE7DC;--ink:#5B5750;--line:#D8D1C4}
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
   html,body{height:100%;overflow:hidden;background:var(--paper);touch-action:manipulation}
   body{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;color:var(--ink);display:flex;flex-direction:column}
 
-  /* 카드가 한 장씩 아주 천천히 교차하며 바뀝니다 */
+  /* 상단 주제 버튼: 가로로 밀어서 봅니다 */
+  #topics{display:flex;gap:8px;overflow-x:auto;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;scrollbar-width:none;flex-shrink:0}
+  #topics::-webkit-scrollbar{display:none}
+  .t{flex:0 0 auto;border:1.5px solid var(--line);border-radius:999px;padding:8px 15px;background:transparent;color:var(--ink);font-size:15px;opacity:.6;transition:opacity .4s,background .4s}
+  .t.sel{opacity:1;background:#fff8;border-color:var(--ink)}
+
   #stage{position:relative;flex:1}
-  .card{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
-        opacity:0;transition:opacity 1.6s ease}
+  .card{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity 1.6s ease}
   .card.on{opacity:1}
-  .figure{width:min(58vw,300px);height:min(58vw,300px);display:flex;align-items:center;justify-content:center}
+  .figure{width:min(56vw,290px);height:min(56vw,290px)}
   .figure svg{width:100%;height:100%;overflow:visible}
-  .word{margin-top:8vh;font-size:clamp(34px,9vw,56px);font-weight:500;letter-spacing:.06em;text-align:center}
+  .word{margin-top:7vh;font-size:clamp(34px,9vw,56px);font-weight:500;letter-spacing:.06em;text-align:center}
   .sub{margin-top:1.2vh;font-size:clamp(15px,4vw,20px);opacity:.55;letter-spacing:.1em}
 
-  /* 부모용: 아래 가장자리를 3초 이상 누르면 설정이 열립니다 */
-  #handle{height:max(24px,env(safe-area-inset-bottom))}
-  #settings{position:absolute;inset:0;background:rgba(237,231,220,.97);display:none;flex-direction:column;
-            justify-content:center;align-items:center;gap:22px;padding:28px;font-size:18px}
+  #handle{height:max(24px,env(safe-area-inset-bottom));flex-shrink:0}
+  #settings{position:absolute;inset:0;background:rgba(237,231,220,.97);display:none;flex-direction:column;justify-content:center;align-items:center;gap:22px;padding:28px;font-size:18px}
   #settings.open{display:flex}
-  #settings h2{font-size:20px;font-weight:500;letter-spacing:.08em;margin-bottom:8px}
+  #settings h2{font-size:20px;font-weight:500;letter-spacing:.08em}
   .row{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
   .chip{border:1.5px solid var(--ink);border-radius:999px;padding:9px 18px;background:transparent;color:var(--ink);font-size:16px}
   .chip.sel{background:var(--ink);color:var(--paper)}
@@ -46,148 +40,204 @@
 </style>
 </head>
 <body>
-<div id="stage">
-  <div class="card" id="a"></div>
-  <div class="card" id="b"></div>
-</div>
+<div id="topics"></div>
+<div id="stage"><div class="card" id="a"></div><div class="card" id="b"></div></div>
 <div id="handle"></div>
 
 <div id="settings">
   <h2>어른용 설정</h2>
-  <div>보여줄 내용</div>
-  <div class="row" id="cats"></div>
-  <div>넘어가는 속도</div>
-  <div class="row" id="speeds"></div>
-  <div>소리</div>
-  <div class="row" id="sound"></div>
+  <div>넘어가는 속도</div><div class="row" id="speeds"></div>
+  <div>소리</div><div class="row" id="sound"></div>
   <button class="close" id="close">돌아가기</button>
 </div>
 
 <script>
-// ── 콘텐츠 ────────────────────────────────────────────────
-const C = { sage:'#A9B8A3', sky:'#A7B9C7', peach:'#D9B8A8', butter:'#DFD3A8', lilac:'#BDB2C6', ink:'#5B5750' };
-const S = (inner) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
-const circle = (c)=>S(`<circle cx="50" cy="50" r="42" fill="${c}"/>`);
+// ── 팔레트 (채도 낮춘 10색) ─────────────────────────────
+const C={red:'#CFA3A0',orange:'#D9B39A',yellow:'#DFD3A8',green:'#A9B8A3',blue:'#A7B9C7',purple:'#BDB2C6',
+         pink:'#D9B8A8',brown:'#B8A48E',white:'#F6F3EC',black:'#7A756E',ink:'#5B5750',sky:'#C9D3DA',leaf:'#98AA92'};
+// ── 그리기 도우미 ─────────────────────────────────────────
+const S=(...a)=>`<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">${a.join('')}</svg>`;
+const ci=(x,y,r,f,o='')=>`<circle cx="${x}" cy="${y}" r="${r}" fill="${f}" ${o}/>`;
+const el=(x,y,rx,ry,f,o='')=>`<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${f}" ${o}/>`;
+const re=(x,y,w,h,rx,f,o='')=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${f}" ${o}/>`;
+const pa=(d,f,o='')=>`<path d="${d}" fill="${f}" ${o}/>`;
+const ln=(d,w=3)=>`<path d="${d}" fill="none" stroke="${C.ink}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+const eyes=(x1,x2,y)=>ci(x1,y,3.2,C.ink)+ci(x2,y,3.2,C.ink);
+const smile=(x,y)=>ln(`M${x-5} ${y} Q${x} ${y+5} ${x+5} ${y}`,2.5);
+const poly=(pts,f)=>pa('M'+pts.join(' L')+' Z',f,'stroke="'+f+'" stroke-width="6" stroke-linejoin="round"');
+const dots=n=>S([...Array(n)].map((_,i)=>ci(14+(i%5)*18, n>5?38+Math.floor(i/5)*24:50, 8, Object.values(C)[i%8])).join(''));
+const win=(x,y)=>re(x,y,10,8,2,C.sky);
 
-const DECK = {
-  '색깔': [
-    { w:'초록', s:'green',  fig:circle(C.sage) },
-    { w:'파랑', s:'blue',   fig:circle(C.sky) },
-    { w:'분홍', s:'pink',   fig:circle(C.peach) },
-    { w:'노랑', s:'yellow', fig:circle(C.butter) },
-    { w:'보라', s:'purple', fig:circle(C.lilac) },
-  ],
-  '모양': [
-    { w:'동그라미', s:'circle',   fig:circle(C.sky) },
-    { w:'네모',     s:'square',   fig:S(`<rect x="12" y="12" width="76" height="76" rx="10" fill="${C.sage}"/>`) },
-    { w:'세모',     s:'triangle', fig:S(`<path d="M50 10 L92 86 L8 86 Z" fill="${C.peach}" stroke="${C.peach}" stroke-width="8" stroke-linejoin="round"/>`) },
-    { w:'별',       s:'star',     fig:S(`<path d="M50 8 L61 38 L94 38 L67 57 L77 90 L50 70 L23 90 L33 57 L6 38 L39 38 Z" fill="${C.butter}" stroke="${C.butter}" stroke-width="6" stroke-linejoin="round"/>`) },
-    { w:'하트',     s:'heart',    fig:S(`<path d="M50 88 C20 66 8 50 8 34 A18 18 0 0 1 50 26 A18 18 0 0 1 92 34 C92 50 80 66 50 88 Z" fill="${C.lilac}"/>`) },
-  ],
-  '동물': [
-    { w:'고양이', s:'cat', fig:S(`<path d="M22 40 L18 10 L40 26 Z M78 40 L82 10 L60 26 Z" fill="${C.peach}"/><circle cx="50" cy="55" r="36" fill="${C.peach}"/><circle cx="38" cy="52" r="3.5" fill="${C.ink}"/><circle cx="62" cy="52" r="3.5" fill="${C.ink}"/><path d="M45 64 Q50 69 55 64" stroke="${C.ink}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`) },
-    { w:'곰',     s:'bear', fig:S(`<circle cx="24" cy="26" r="13" fill="${C.butter}"/><circle cx="76" cy="26" r="13" fill="${C.butter}"/><circle cx="50" cy="55" r="36" fill="${C.butter}"/><circle cx="38" cy="50" r="3.5" fill="${C.ink}"/><circle cx="62" cy="50" r="3.5" fill="${C.ink}"/><ellipse cx="50" cy="63" rx="7" ry="5" fill="${C.ink}" opacity=".7"/>`) },
-    { w:'토끼',   s:'rabbit', fig:S(`<ellipse cx="36" cy="22" rx="9" ry="22" fill="${C.lilac}"/><ellipse cx="64" cy="22" rx="9" ry="22" fill="${C.lilac}"/><circle cx="50" cy="60" r="32" fill="${C.lilac}"/><circle cx="40" cy="57" r="3.5" fill="${C.ink}"/><circle cx="60" cy="57" r="3.5" fill="${C.ink}"/><circle cx="50" cy="67" r="3" fill="${C.ink}" opacity=".7"/>`) },
-    { w:'개구리', s:'frog', fig:S(`<circle cx="30" cy="30" r="12" fill="${C.sage}"/><circle cx="70" cy="30" r="12" fill="${C.sage}"/><circle cx="30" cy="30" r="4" fill="${C.ink}"/><circle cx="70" cy="30" r="4" fill="${C.ink}"/><ellipse cx="50" cy="60" rx="40" ry="30" fill="${C.sage}"/><path d="M36 64 Q50 74 64 64" stroke="${C.ink}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`) },
-    { w:'물고기', s:'fish', fig:S(`<path d="M78 50 L96 34 L96 66 Z" fill="${C.sky}"/><ellipse cx="46" cy="50" rx="36" ry="24" fill="${C.sky}"/><circle cx="28" cy="46" r="3.5" fill="${C.ink}"/>`) },
-  ],
-  '숫자': [1,2,3,4,5].map(n=>({
-    w:['하나','둘','셋','넷','다섯'][n-1], s:String(n),
-    fig:S([...Array(n)].map((_,i)=>{
-      const cols=Math.min(n,3), row=Math.floor(i/3), col=i%3, inRow=Math.min(n-row*3,3);
-      const x=50+(col-(inRow-1)/2)*26, y=n>3?36+row*30:50;
-      return `<circle cx="${x}" cy="${y}" r="10" fill="${[C.sage,C.sky,C.peach,C.butter,C.lilac][i]}"/>`;
-    }).join(''))
-  })),
+// ── 콘텐츠: 10주제 × 10장 ─────────────────────────────────
+const DECK={
+'색깔':[['빨강','red'],['주황','orange'],['노랑','yellow'],['초록','green'],['파랑','blue'],['보라','purple'],['분홍','pink'],['갈색','brown'],['하양','white'],['검정','black']]
+  .map(([w,s])=>({w,s,fig:S(ci(50,50,42,C[s],s==='white'?`stroke="${C.line||'#D8D1C4'}" stroke-width="2"`:''))})),
+
+'모양':[
+ {w:'동그라미',s:'circle',fig:S(ci(50,50,42,C.blue))},
+ {w:'네모',s:'square',fig:S(re(12,12,76,76,10,C.green))},
+ {w:'세모',s:'triangle',fig:S(poly(['50 10','92 86','8 86'],C.pink))},
+ {w:'별',s:'star',fig:S(poly(['50 8','61 38','94 38','67 57','77 90','50 70','23 90','33 57','6 38','39 38'],C.yellow))},
+ {w:'하트',s:'heart',fig:S(pa('M50 88 C20 66 8 50 8 34 A18 18 0 0 1 50 26 A18 18 0 0 1 92 34 C92 50 80 66 50 88 Z',C.purple))},
+ {w:'타원',s:'oval',fig:S(el(50,50,44,28,C.orange))},
+ {w:'초승달',s:'moon',fig:S(pa('M62 8 A42 42 0 1 0 62 92 A32 32 0 1 1 62 8 Z',C.yellow))},
+ {w:'마름모',s:'diamond',fig:S(poly(['50 8','90 50','50 92','10 50'],C.red))},
+ {w:'육각형',s:'hexagon',fig:S(poly(['50 8','86 29','86 71','50 92','14 71','14 29'],C.blue))},
+ {w:'십자',s:'cross',fig:S(re(36,8,28,84,8,C.green)+re(8,36,84,28,8,C.green))}],
+
+'동물':[
+ {w:'고양이',s:'cat',fig:S(pa('M22 40 L18 10 L40 26 Z M78 40 L82 10 L60 26 Z',C.pink)+ci(50,55,36,C.pink)+eyes(38,62,52)+smile(50,64))},
+ {w:'곰',s:'bear',fig:S(ci(24,26,13,C.brown)+ci(76,26,13,C.brown)+ci(50,55,36,C.brown)+eyes(38,62,50)+el(50,63,7,5,C.ink,'opacity=".7"'))},
+ {w:'토끼',s:'rabbit',fig:S(el(36,22,9,22,C.purple)+el(64,22,9,22,C.purple)+ci(50,60,32,C.purple)+eyes(40,60,57)+ci(50,67,3,C.ink,'opacity=".7"'))},
+ {w:'개구리',s:'frog',fig:S(ci(30,30,12,C.green)+ci(70,30,12,C.green)+ci(30,30,4,C.ink)+ci(70,30,4,C.ink)+el(50,60,40,30,C.green)+smile(50,66))},
+ {w:'물고기',s:'fish',fig:S(pa('M78 50 L96 34 L96 66 Z',C.blue)+el(46,50,36,24,C.blue)+ci(28,46,3.5,C.ink))},
+ {w:'강아지',s:'dog',fig:S(el(18,40,10,20,C.orange)+el(82,40,10,20,C.orange)+ci(50,52,34,C.orange)+eyes(38,62,48)+el(50,62,8,6,C.ink,'opacity=".7"'))},
+ {w:'병아리',s:'chick',fig:S(ci(50,60,30,C.yellow)+ci(50,30,18,C.yellow)+eyes(44,56,28)+poly(['48 34','60 38','48 42'],C.orange))},
+ {w:'돼지',s:'pig',fig:S(poly(['22 30','30 12','40 28'],C.pink)+poly(['78 30','70 12','60 28'],C.pink)+ci(50,55,36,C.pink)+eyes(38,62,48)+el(50,64,10,7,C.red)+ci(46,64,2,C.ink)+ci(54,64,2,C.ink))},
+ {w:'부엉이',s:'owl',fig:S(el(50,58,32,36,C.brown)+ci(38,48,10,C.white)+ci(62,48,10,C.white)+ci(38,48,4,C.ink)+ci(62,48,4,C.ink)+poly(['50 56','45 64','55 64'],C.orange))},
+ {w:'달팽이',s:'snail',fig:S(el(40,70,36,14,C.green)+ci(58,48,26,C.brown)+ci(58,48,14,C.orange)+ln('M18 62 L14 40 M22 62 L28 40')+ci(14,38,3,C.ink)+ci(28,38,3,C.ink))}],
+
+'숫자':['하나','둘','셋','넷','다섯','여섯','일곱','여덟','아홉','열'].map((w,i)=>({w,s:String(i+1),fig:dots(i+1)})),
+
+'과일':[
+ {w:'사과',s:'apple',fig:S(ci(50,58,34,C.red)+ln('M50 26 L52 14')+el(58,18,7,4,C.leaf))},
+ {w:'바나나',s:'banana',fig:S(pa('M20 30 C20 80 70 92 90 66 C70 78 32 66 26 30 Z',C.yellow))},
+ {w:'포도',s:'grapes',fig:S([[50,30],[38,45],[62,45],[30,60],[50,60],[70,60],[40,75],[60,75],[50,90]].map(p=>ci(p[0],p[1],10,C.purple)).join('')+ln('M50 20 L50 10'))},
+ {w:'딸기',s:'strawberry',fig:S(pa('M50 92 C20 70 14 50 24 34 C36 24 64 24 76 34 C86 50 80 70 50 92 Z',C.red)+poly(['36 30','50 18','64 30','50 36'],C.leaf))},
+ {w:'수박',s:'watermelon',fig:S(pa('M8 40 A42 42 0 0 0 92 40 Z',C.green)+pa('M16 40 A34 34 0 0 0 84 40 Z',C.red)+ci(40,52,2.5,C.ink)+ci(55,58,2.5,C.ink)+ci(66,50,2.5,C.ink))},
+ {w:'오렌지',s:'orange',fig:S(ci(50,54,36,C.orange)+el(58,20,8,5,C.leaf))},
+ {w:'배',s:'pear',fig:S(pa('M50 20 C60 20 62 40 72 52 C84 68 74 92 50 92 C26 92 16 68 28 52 C38 40 40 20 50 20 Z',C.green)+ln('M50 20 L54 8'))},
+ {w:'체리',s:'cherry',fig:S(ln('M36 62 Q44 26 66 20 M64 62 Q64 32 66 20')+ci(36,72,16,C.red)+ci(64,72,16,C.red))},
+ {w:'레몬',s:'lemon',fig:S(el(50,52,40,26,C.yellow,'transform="rotate(-20 50 52)"'))},
+ {w:'복숭아',s:'peach',fig:S(ci(42,58,30,C.pink)+ci(58,58,30,C.pink)+ln('M50 30 L50 44')+el(58,26,8,4,C.leaf))}],
+
+'탈것':[
+ {w:'자동차',s:'car',fig:S(re(10,48,80,26,8,C.red)+pa('M26 48 L36 30 L64 30 L74 48 Z',C.red)+win(40,34)+ci(28,76,8,C.ink)+ci(72,76,8,C.ink))},
+ {w:'버스',s:'bus',fig:S(re(10,28,80,46,8,C.yellow)+win(18,38)+win(36,38)+win(54,38)+win(72,38)+ci(26,78,8,C.ink)+ci(74,78,8,C.ink))},
+ {w:'기차',s:'train',fig:S(re(8,44,84,26,6,C.blue)+re(14,26,30,20,6,C.blue)+win(20,32)+ci(22,76,7,C.ink)+ci(50,76,7,C.ink)+ci(78,76,7,C.ink)+re(70,30,8,14,2,C.ink))},
+ {w:'배',s:'boat',fig:S(pa('M10 60 L90 60 L78 80 L22 80 Z',C.brown)+ln('M50 60 L50 18')+poly(['52 20','80 56','52 56'],C.white))},
+ {w:'비행기',s:'airplane',fig:S(el(50,50,42,10,C.sky)+poly(['40 50','60 50','56 22','48 22'],C.blue)+poly(['40 50','60 50','56 78','48 78'],C.blue)+poly(['12 44','12 30','22 46'],C.blue))},
+ {w:'자전거',s:'bicycle',fig:S(`<circle cx="26" cy="66" r="16" fill="none" stroke="${C.ink}" stroke-width="3"/><circle cx="74" cy="66" r="16" fill="none" stroke="${C.ink}" stroke-width="3"/>`+ln('M26 66 L44 40 L74 66 M44 40 L64 40 M50 66 L44 40 M64 40 L60 30'))},
+ {w:'트럭',s:'truck',fig:S(re(8,34,52,36,6,C.green)+re(60,44,32,26,6,C.orange)+win(68,50)+ci(24,76,8,C.ink)+ci(74,76,8,C.ink))},
+ {w:'헬리콥터',s:'helicopter',fig:S(ln('M20 20 L80 20 M50 20 L50 32')+el(46,52,30,20,C.blue)+win(56,44)+ln('M16 60 L28 52')+ln('M28 76 L64 76'))},
+ {w:'로켓',s:'rocket',fig:S(pa('M50 6 C68 24 68 60 62 80 L38 80 C32 60 32 24 50 6 Z',C.white,`stroke="${C.ink}" stroke-width="2"`)+ci(50,44,7,C.blue)+poly(['38 66','24 84','38 84'],C.red)+poly(['62 66','76 84','62 84'],C.red)+poly(['42 84','58 84','50 96'],C.orange))},
+ {w:'열기구',s:'balloon',fig:S(pa('M50 8 C80 8 84 50 50 70 C16 50 20 8 50 8 Z',C.pink)+ln('M42 68 L44 80 M58 68 L56 80')+re(42,80,16,10,2,C.brown))}],
+
+'날씨':[
+ {w:'해',s:'sun',fig:S([...Array(8)].map((_,i)=>`<path d="M50 6 L50 16" stroke="${C.yellow}" stroke-width="5" stroke-linecap="round" transform="rotate(${i*45} 50 50)"/>`).join('')+ci(50,50,24,C.yellow))},
+ {w:'달',s:'moon',fig:S(pa('M62 8 A42 42 0 1 0 62 92 A32 32 0 1 1 62 8 Z',C.yellow))},
+ {w:'별',s:'star',fig:S(poly(['50 8','61 38','94 38','67 57','77 90','50 70','23 90','33 57','6 38','39 38'],C.yellow))},
+ {w:'구름',s:'cloud',fig:S(ci(34,58,20,C.white)+ci(54,46,24,C.white)+ci(72,60,18,C.white)+re(20,60,70,18,9,C.white))},
+ {w:'비',s:'rain',fig:S(ci(34,40,16,C.blue)+ci(54,30,20,C.blue)+ci(72,42,14,C.blue)+re(20,42,66,14,7,C.blue)+ln('M32 66 L28 80 M50 66 L46 80 M68 66 L64 80'))},
+ {w:'눈',s:'snow',fig:S([0,60,120].map(a=>`<path d="M50 12 L50 88" stroke="${C.sky}" stroke-width="5" stroke-linecap="round" transform="rotate(${a} 50 50)"/>`).join('')+ci(50,50,6,C.white))},
+ {w:'무지개',s:'rainbow',fig:S([['red',44],['yellow',36],['green',28],['blue',20]].map(([c,r])=>`<path d="M${50-r} 78 A${r} ${r} 0 0 1 ${50+r} 78" fill="none" stroke="${C[c]}" stroke-width="8"/>`).join(''))},
+ {w:'번개',s:'lightning',fig:S(poly(['56 8','30 54','48 54','40 92','72 42','54 42','66 8'],C.yellow))},
+ {w:'바람',s:'wind',fig:S(ln('M14 36 Q50 26 68 40 Q80 50 60 52 M12 60 Q60 50 84 64 Q92 72 76 74',4))},
+ {w:'우산',s:'umbrella',fig:S(pa('M10 54 A40 40 0 0 1 90 54 Z',C.red)+ln('M50 54 L50 84 Q50 92 42 90',3.5))}],
+
+'집':[
+ {w:'컵',s:'cup',fig:S(re(26,26,40,50,6,C.blue)+pa('M66 36 A12 12 0 0 1 66 62',C.blue,`stroke="${C.blue}" stroke-width="6" fill="none"`))},
+ {w:'숟가락',s:'spoon',fig:S(el(50,26,16,20,C.brown)+re(46,40,8,52,4,C.brown))},
+ {w:'의자',s:'chair',fig:S(re(26,12,10,50,3,C.brown)+re(26,54,50,10,3,C.brown)+re(26,60,8,32,2,C.brown)+re(68,60,8,32,2,C.brown))},
+ {w:'침대',s:'bed',fig:S(re(10,30,12,50,3,C.brown)+re(10,54,80,16,4,C.blue)+re(20,42,26,12,6,C.white)+re(78,50,12,30,3,C.brown))},
+ {w:'책',s:'book',fig:S(re(14,18,72,64,6,C.green)+re(22,26,56,48,2,C.white)+ln('M50 26 L50 74',2))},
+ {w:'공',s:'ball',fig:S(ci(50,50,40,C.red)+pa('M10 50 A40 40 0 0 1 90 50',C.white,'opacity=".5"'))},
+ {w:'모자',s:'hat',fig:S(re(8,62,84,12,6,C.blue)+re(28,26,44,40,10,C.blue))},
+ {w:'신발',s:'shoe',fig:S(pa('M12 74 L12 46 C30 46 40 40 50 30 C62 46 84 52 88 68 L88 74 Z',C.orange)+re(12,72,76,10,5,C.brown))},
+ {w:'시계',s:'clock',fig:S(ci(50,50,40,C.white,`stroke="${C.ink}" stroke-width="3"`)+ln('M50 50 L50 26 M50 50 L66 58',3.5)+ci(50,50,3,C.ink))},
+ {w:'문',s:'door',fig:S(re(26,8,48,84,4,C.brown)+re(34,18,32,30,2,C.orange)+ci(64,58,3.5,C.yellow))}],
+
+'자연':[
+ {w:'나무',s:'tree',fig:S(re(45,62,10,30,3,C.brown)+ci(50,42,30,C.green))},
+ {w:'꽃',s:'flower',fig:S(ln('M50 60 L50 92')+[0,72,144,216,288].map(a=>`<ellipse cx="50" cy="30" rx="10" ry="16" fill="${C.pink}" transform="rotate(${a} 50 46)"/>`).join('')+ci(50,46,9,C.yellow))},
+ {w:'산',s:'mountain',fig:S(poly(['8 86','40 30','62 68','72 50','92 86'],C.green)+poly(['40 30','32 44','48 44'],C.white))},
+ {w:'잎',s:'leaf',fig:S(pa('M20 80 C20 30 60 14 86 14 C86 50 60 84 20 80 Z',C.leaf)+ln('M22 78 L74 26',2))},
+ {w:'버섯',s:'mushroom',fig:S(pa('M12 52 A38 32 0 0 1 88 52 Z',C.red)+ci(36,40,5,C.white)+ci(58,32,5,C.white)+re(38,52,24,36,8,C.white))},
+ {w:'파도',s:'wave',fig:S(pa('M0 60 Q25 36 50 60 T100 60 L100 100 L0 100 Z',C.blue)+pa('M0 74 Q25 50 50 74 T100 74 L100 100 L0 100 Z',C.sky))},
+ {w:'돌',s:'rock',fig:S(pa('M18 76 C10 56 22 36 46 34 C72 30 90 50 84 72 C78 86 26 88 18 76 Z',C.black,'opacity=".6"'))},
+ {w:'풀',s:'grass',fig:S([14,30,46,62,78].map(x=>`<path d="M${x} 90 Q${x+4} 60 ${x+8} 40" fill="none" stroke="${C.green}" stroke-width="7" stroke-linecap="round"/>`).join(''))},
+ {w:'조개',s:'shell',fig:S(pa('M50 90 L12 50 A38 38 0 0 1 88 50 Z',C.pink)+ln('M50 90 L28 40 M50 90 L50 24 M50 90 L72 40',2))},
+ {w:'해바라기',s:'sunflower',fig:S(ln('M50 60 L50 94')+[...Array(10)].map((_,i)=>`<ellipse cx="50" cy="20" rx="7" ry="14" fill="${C.yellow}" transform="rotate(${i*36} 50 44)"/>`).join('')+ci(50,44,12,C.brown))}],
+
+'음식':[
+ {w:'밥',s:'rice',fig:S(pa('M12 50 A38 38 0 0 0 88 50 Z',C.white,`stroke="${C.ink}" stroke-width="2"`)+ci(38,40,10,C.white)+ci(56,34,12,C.white)+ci(70,44,9,C.white))},
+ {w:'빵',s:'bread',fig:S(pa('M16 52 A34 34 0 0 1 84 52 L84 84 L16 84 Z',C.orange)+re(24,54,52,22,4,C.yellow))},
+ {w:'우유',s:'milk',fig:S(pa('M30 34 L30 88 L70 88 L70 34 L60 16 L40 16 Z',C.white,`stroke="${C.ink}" stroke-width="2"`)+re(30,50,40,14,0,C.blue))},
+ {w:'달걀',s:'egg',fig:S(el(50,52,40,26,C.white,`stroke="${C.ink}" stroke-width="2"`)+ci(50,50,12,C.yellow))},
+ {w:'케이크',s:'cake',fig:S(re(14,46,72,40,6,C.pink)+re(20,36,60,14,6,C.white)+ln('M50 36 L50 20',3)+ci(50,16,4,C.yellow))},
+ {w:'사탕',s:'candy',fig:S(poly(['10 30','26 50','10 70'],C.red)+poly(['90 30','74 50','90 70'],C.red)+ci(50,50,24,C.red)+pa('M36 40 Q50 50 36 60 M50 32 Q64 50 50 68',C.white,`stroke="${C.white}" stroke-width="4" fill="none"`))},
+ {w:'아이스크림',s:'ice-cream',fig:S(poly(['30 46','70 46','50 92'],C.orange)+ci(50,36,22,C.pink))},
+ {w:'쿠키',s:'cookie',fig:S(ci(50,50,38,C.orange)+ci(36,40,4,C.brown)+ci(60,36,4,C.brown)+ci(48,58,4,C.brown)+ci(64,60,4,C.brown)+ci(34,64,4,C.brown))},
+ {w:'주스',s:'juice',fig:S(re(30,20,40,70,6,C.orange)+re(30,20,40,14,6,C.white)+ln('M60 22 L70 8',3))},
+ {w:'당근',s:'carrot',fig:S(poly(['50 92','32 30','68 30'],C.orange)+pa('M40 30 L34 12 M50 30 L50 8 M60 30 L66 12',C.leaf,`stroke="${C.leaf}" stroke-width="6" stroke-linecap="round" fill="none"`))}],
 };
+Object.keys(DECK).forEach(k=>{ if(DECK[k].length!==10) console.warn(k,DECK[k].length); });
 
 // ── 상태 ────────────────────────────────────────────────
-const P = { cats:['색깔','모양','동물','숫자'], speed:8000, sound:true };
-try{ Object.assign(P, JSON.parse(localStorage.getItem('salgm')||'{}')); }catch(e){}
+const P={topic:'전부',speed:8000,sound:true};
+try{Object.assign(P,JSON.parse(localStorage.getItem('salgm')||'{}'));}catch(e){}
 const save=()=>localStorage.setItem('salgm',JSON.stringify(P));
 
-let queue=[], idx=0, front='a', timer=null;
+let queue=[],idx=0,front='a',timer=null;
 function build(){
-  queue = P.cats.flatMap(c=>DECK[c].map(i=>({...i,cat:c})));
+  queue = P.topic==='전부' ? Object.values(DECK).flat() : DECK[P.topic].slice();
   for(let i=queue.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[queue[i],queue[j]]=[queue[j],queue[i]];}
   idx=0;
-}
-// ── 소리 ────────────────────────────────────────────────
-// 1순위: audio/ 폴더에 녹음 파일(mp3)이 있으면 그것을 재생
-// 2순위: 기기에 있는 목소리 중 가장 자연스러운 한국어 여성 음성
-const PREFER = ['Yuna','유나','SunHi','선히','Google 한국의','Heami','Microsoft SunHi Online','Microsoft Heami'];
-let voice=null;
-function pickVoice(){
-  const vs=speechSynthesis.getVoices().filter(v=>v.lang.replace('_','-').startsWith('ko'));
-  if(!vs.length) return;
-  voice = vs.find(v=>PREFER.some(p=>v.name.includes(p)) && !v.localService) // Online/Natural 우선
-       || vs.find(v=>PREFER.some(p=>v.name.includes(p)))
-       || vs[0];
-}
-if('speechSynthesis' in window){ pickVoice(); speechSynthesis.onvoiceschanged=pickVoice; }
-
-const player=new Audio(); player.volume=.8;
-function speak(t,key){
-  if(!P.sound) return;
-  const src=`audio/${key}.mp3`;
-  player.pause();
-  fetch(src,{method:'HEAD'}).then(r=>{
-    if(r.ok){ player.src=src; player.play().catch(()=>{}); }
-    else tts(t);
-  }).catch(()=>tts(t));
-}
-function tts(t){
-  if(!('speechSynthesis' in window)) return;
-  speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(t);
-  u.lang='ko-KR'; u.rate=.78; u.pitch=1.15; u.volume=.8;
-  if(voice) u.voice=voice;
-  speechSynthesis.speak(u);
 }
 function show(){
   if(!queue.length) build();
   const item=queue[idx]; idx=(idx+1)%queue.length; if(idx===0) build();
-  const back = front==='a'?'b':'a';
-  const el=document.getElementById(back);
-  el.innerHTML=`<div class="figure">${item.fig}</div><div class="word">${item.w}</div><div class="sub">${item.s}</div>`;
-  document.getElementById(front).classList.remove('on');
-  el.classList.add('on'); front=back;
+  const back=front==='a'?'b':'a', e=document.getElementById(back);
+  e.innerHTML=`<div class="figure">${item.fig}</div><div class="word">${item.w}</div><div class="sub">${item.s}</div>`;
+  document.getElementById(front).classList.remove('on'); e.classList.add('on'); front=back;
   speak(item.w,item.s);
   clearTimeout(timer); timer=setTimeout(show,P.speed);
 }
+document.getElementById('stage').addEventListener('pointerdown',()=>{ if(!settings.classList.contains('open')) show(); });
 
-// 화면 어디를 눌러도 다음으로 (설정이 열려있지 않을 때만)
-document.getElementById('stage').addEventListener('pointerdown',()=>{
-  if(!settings.classList.contains('open')) show();
+// ── 상단 주제 버튼 ───────────────────────────────────────
+const topics=document.getElementById('topics');
+['전부',...Object.keys(DECK)].forEach(k=>{
+  const b=document.createElement('button'); b.className='t'+(P.topic===k?' sel':''); b.textContent=k;
+  b.onclick=()=>{P.topic=k;save();[...topics.children].forEach(c=>c.classList.toggle('sel',c.textContent===k));b.scrollIntoView({inline:'center',behavior:'smooth'});build();show();};
+  topics.appendChild(b);
 });
+topics.querySelector('.sel')?.scrollIntoView({inline:'center'});
+
+// ── 소리 ────────────────────────────────────────────────
+const PREFER=['Yuna','유나','SunHi','선히','Google 한국의','Heami'];
+let voice=null;
+function pickVoice(){
+  const vs=speechSynthesis.getVoices().filter(v=>v.lang.replace('_','-').startsWith('ko')); if(!vs.length) return;
+  voice=vs.find(v=>PREFER.some(p=>v.name.includes(p))&&!v.localService)||vs.find(v=>PREFER.some(p=>v.name.includes(p)))||vs[0];
+}
+if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice;}
+const player=new Audio(); player.volume=.8;
+function speak(t,key){
+  if(!P.sound) return; player.pause();
+  const src=`audio/${key}.mp3`;
+  fetch(src,{method:'HEAD'}).then(r=>{ if(r.ok){player.src=src;player.play().catch(()=>{});} else tts(t); }).catch(()=>tts(t));
+}
+function tts(t){
+  if(!('speechSynthesis' in window)) return; speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(t); u.lang='ko-KR'; u.rate=.78; u.pitch=1.15; u.volume=.8; if(voice) u.voice=voice;
+  speechSynthesis.speak(u);
+}
 
 // ── 어른용 설정 (아래 가장자리 3초 길게 누르기) ──────────
-const settings=document.getElementById('settings');
-let hold=null;
-const h=document.getElementById('handle');
+const settings=document.getElementById('settings'); let hold=null; const h=document.getElementById('handle');
 h.addEventListener('pointerdown',()=>{hold=setTimeout(()=>{settings.classList.add('open');clearTimeout(timer);},3000);});
-['pointerup','pointerleave','pointercancel'].forEach(e=>h.addEventListener(e,()=>clearTimeout(hold)));
-document.getElementById('close').onclick=()=>{settings.classList.remove('open');build();show();};
-
-function chips(id, list, isSel, onPick){
+['pointerup','pointerleave','pointercancel'].forEach(ev=>h.addEventListener(ev,()=>clearTimeout(hold)));
+document.getElementById('close').onclick=()=>{settings.classList.remove('open');show();};
+function chips(id,list,isSel,onPick){
   const box=document.getElementById(id); box.innerHTML='';
-  list.forEach(([label,val])=>{
-    const b=document.createElement('button'); b.className='chip'+(isSel(val)?' sel':''); b.textContent=label;
-    b.onclick=()=>{onPick(val);save();render();}; box.appendChild(b);
-  });
+  list.forEach(([label,val])=>{const b=document.createElement('button');b.className='chip'+(isSel(val)?' sel':'');b.textContent=label;b.onclick=()=>{onPick(val);save();render();};box.appendChild(b);});
 }
 function render(){
-  chips('cats', Object.keys(DECK).map(c=>[c,c]), v=>P.cats.includes(v), v=>{
-    P.cats = P.cats.includes(v) ? P.cats.filter(x=>x!==v) : [...P.cats,v];
-    if(!P.cats.length) P.cats=[v];
-  });
-  chips('speeds', [['느리게',12000],['보통',8000],['조금 빠르게',5000]], v=>P.speed===v, v=>P.speed=v);
-  chips('sound', [['켜기',true],['끄기',false]], v=>P.sound===v, v=>P.sound=v);
+  chips('speeds',[['느리게',12000],['보통',8000],['조금 빠르게',5000]],v=>P.speed===v,v=>P.speed=v);
+  chips('sound',[['켜기',true],['끄기',false]],v=>P.sound===v,v=>P.sound=v);
 }
-render();
-
-// iOS는 첫 터치 이후에만 소리가 나므로, 첫 화면은 조용히 시작합니다
-build(); show();
+render(); build(); show();
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
