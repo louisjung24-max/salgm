@@ -65,6 +65,20 @@
   .chip.rec.done{opacity:1}
   .chip.rec.live{background:#CFA3A0;color:#fff;border-color:#CFA3A0}
   .chip.small{padding:8px 10px;font-size:14px}
+  #splash{position:absolute;inset:0;background:var(--paper);z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;transition:opacity .9s ease}
+  #splash.off{opacity:0;pointer-events:none}
+  .sp-fig{width:min(46vw,220px);height:min(46vw,220px);margin-bottom:6vh}
+  .sp-fig svg{width:100%;height:100%;overflow:visible}
+  .sp-title{font-size:clamp(34px,9vw,54px);font-weight:500;letter-spacing:.12em}
+  .sp-sub{font-size:clamp(15px,4vw,19px);letter-spacing:.08em}
+  .sp-hint{margin-top:10vh;font-size:15px;opacity:.75;letter-spacing:.06em;animation:breathe 3s ease-in-out infinite}
+  @keyframes breathe{0%,100%{opacity:.4}50%{opacity:.9}}
+  #gate{position:absolute;inset:0;background:var(--paper);z-index:9;display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:28px}
+  #gate.open{display:flex}
+  .g-title{font-size:18px;font-weight:500;letter-spacing:.08em}
+  .g-q{font-size:clamp(40px,11vw,64px);font-weight:500;letter-spacing:.1em}
+  #gateA .chip{font-size:22px;padding:12px 24px;min-width:72px}
+  #gateA .chip.wrong{background:#CFA3A0;border-color:#CFA3A0;color:#fff}
   @media (prefers-reduced-motion:reduce){.card.on{animation-duration:.3s}}
 </style>
 </head>
@@ -84,7 +98,21 @@
   <div class="lab">소리</div><div class="row" id="sound"></div>
   <div class="lab">엄마·아빠 목소리</div><div class="row"><button class="chip" id="openRec">낱말 녹음하기</button></div>
   <button class="close" id="close">돌아가기</button>
-  <div class="lab" style="margin-top:4px;font-weight:400">v12</div>
+  <div class="lab" style="margin-top:4px;font-weight:400">v13</div>
+</div>
+<div id="splash">
+  <div class="sp-fig">
+    <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="#A9B8A3"/><circle cx="50" cy="50" r="40" fill="none" stroke="#A9B8A3" stroke-width="2" opacity=".5"/><circle cx="50" cy="50" r="48" fill="none" stroke="#A9B8A3" stroke-width="1.5" opacity=".25"/><ellipse cx="40" cy="40" rx="7" ry="4" fill="#fff" opacity=".45"/></svg>
+  </div>
+  <div class="sp-title">살금살금</div>
+  <div class="sp-sub">아기의 첫 낱말 그림책</div>
+  <div class="sp-hint">화면을 톡 누르면 시작해요</div>
+</div>
+<div id="gate">
+  <div class="g-title">어른 확인</div>
+  <div class="g-q" id="gateQ"></div>
+  <div class="row" id="gateA"></div>
+  <button class="close" id="gateClose">취소</button>
 </div>
 <div id="recorder">
   <h2>낱말 녹음</h2>
@@ -269,7 +297,7 @@ function show(){
   clearTimeout(timer); timer=setTimeout(show,P.speed*(isNight()?1.5:1));
 }
 document.getElementById('stage').addEventListener('pointerdown',()=>{
-  if(settings.classList.contains('open')||recorder.classList.contains('open')) return;
+  if(settings.classList.contains('open')||recorder.classList.contains('open')||gate.classList.contains('open')) return;
   if(asleep){ wake(); return; }
   show();
 });
@@ -346,7 +374,25 @@ const settings=document.getElementById('settings'), recorder=document.getElement
 function openSettings(){ settings.classList.add('open'); clearTimeout(timer); clearTimeout(sleepTimer); }
 const gear=document.getElementById('gear'), lockBtn=document.getElementById('lock');
 const isUnlocked=()=>document.body.classList.contains('unlocked');
-lockBtn.addEventListener('click',e=>{e.stopPropagation();document.body.classList.toggle('unlocked');});
+// 자물쇠: 잠긴 상태 → 덧셈 문제, 열린 상태 → 바로 잠금
+const gate=document.getElementById('gate'), gateQ=document.getElementById('gateQ'), gateA=document.getElementById('gateA');
+let gateAns=0;
+function askGate(){
+  const a=2+Math.floor(Math.random()*7), b=2+Math.floor(Math.random()*7); gateAns=a+b;
+  gateQ.textContent=`${a} + ${b} = ?`;
+  const opts=new Set([gateAns]); while(opts.size<4){ const v=gateAns+Math.floor(Math.random()*7)-3; if(v>1&&v!==gateAns) opts.add(v); }
+  gateA.innerHTML='';
+  [...opts].sort(()=>Math.random()-.5).forEach(v=>{
+    const bt=document.createElement('button'); bt.className='chip'; bt.textContent=v;
+    bt.onclick=()=>{ if(v===gateAns){ gate.classList.remove('open'); document.body.classList.add('unlocked'); } else { bt.classList.add('wrong'); setTimeout(askGate,500); } };
+    gateA.appendChild(bt);
+  });
+}
+lockBtn.addEventListener('click',e=>{e.stopPropagation();
+  if(isUnlocked()){ document.body.classList.remove('unlocked'); return; }
+  askGate(); gate.classList.add('open'); clearTimeout(timer);
+});
+document.getElementById('gateClose').onclick=()=>{gate.classList.remove('open');show();};
 const tip=document.getElementById('tip'); let tipT=null;
 gear.addEventListener('click',e=>{e.stopPropagation(); if(isUnlocked()){openSettings();return;}
   tip.classList.add('show'); clearTimeout(tipT); tipT=setTimeout(()=>tip.classList.remove('show'),1800);});
@@ -402,7 +448,9 @@ async function renderRec(){
   });
 }
 
-render(); applyNight(); build(); show(); armSleep();
+render(); applyNight(); build();
+const splash=document.getElementById('splash');
+splash.addEventListener('pointerdown',()=>{ unlockAudio(); keepAwake(); splash.classList.add('off'); setTimeout(()=>{show(); armSleep();},250); },{once:true});
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
