@@ -17,9 +17,10 @@
   /* 상단 주제 버튼: 가로로 밀어서 봅니다 */
   #topbar{display:flex;justify-content:flex-end;align-items:center;padding:calc(6px + env(safe-area-inset-top)) 10px 0;flex-shrink:0}
   #topics{display:flex;gap:8px;overflow-x:auto;padding:4px 14px 10px;scrollbar-width:none;flex-shrink:0}
-  #gear{width:48px;height:36px;border:0;background:transparent;color:var(--ink);opacity:.3;font-size:14px;letter-spacing:1px;border-radius:12px}
-  #gear.hold{opacity:.8;background:#fff5}
-  body.night #gear.hold{background:#fff2}
+  #gear,#lock{width:48px;height:40px;border:0;background:transparent;color:var(--ink);opacity:.3;font-size:14px;letter-spacing:1px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+  body.unlocked #gear,body.unlocked #lock{opacity:.75}
+  body.unlocked #lock .shackle{transform:translate(4px,-2px) rotate(20deg);transform-origin:16px 11px}
+  body:not(.unlocked) #topics .t{pointer-events:none}
   #topics::-webkit-scrollbar{display:none}
   .t{flex:0 0 auto;border:1.5px solid var(--line);border-radius:999px;padding:8px 15px;background:transparent;color:var(--ink);font-size:15px;opacity:.6;transition:opacity .4s,background .4s}
   .t.sel{opacity:1;background:#fff8;border-color:var(--ink)}
@@ -64,7 +65,7 @@
 </style>
 </head>
 <body>
-<div id="topbar"><button id="gear" aria-label="어른용 설정">•••</button></div>
+<div id="topbar"><button id="lock" aria-label="잠금"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="shackle" d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button><button id="gear" aria-label="어른용 설정">•••</button></div>
 <div id="topics"></div>
 <div id="stage"><div class="card" id="a"></div><div class="card" id="b"></div></div>
 <div id="dim"></div>
@@ -79,7 +80,7 @@
   <div class="lab">소리</div><div class="row" id="sound"></div>
   <div class="lab">엄마·아빠 목소리</div><div class="row"><button class="chip" id="openRec">낱말 녹음하기</button></div>
   <button class="close" id="close">돌아가기</button>
-  <div class="lab" style="margin-top:4px">v9</div>
+  <div class="lab" style="margin-top:4px">v10</div>
 </div>
 <div id="recorder">
   <h2>낱말 녹음</h2>
@@ -279,7 +280,7 @@ function wake(){ asleep=false; dim.classList.remove('on'); armSleep(); show(); }
 const topics=document.getElementById('topics');
 ['전부',...Object.keys(DECK)].forEach(k=>{
   const b=document.createElement('button'); b.className='t'+(P.topic===k?' sel':''); b.textContent=k;
-  b.onclick=()=>{P.topic=k;save();[...topics.children].forEach(c=>c.classList.toggle('sel',c.textContent===k));b.scrollIntoView({inline:'center',behavior:'smooth'});build();show();};
+  b.onclick=()=>{if(!isUnlocked())return;P.topic=k;save();[...topics.children].forEach(c=>c.classList.toggle('sel',c.textContent===k));b.scrollIntoView({inline:'center',behavior:'smooth'});build();show();};
   topics.appendChild(b);
 });
 topics.querySelector('.sel')?.scrollIntoView({inline:'center'});
@@ -338,15 +339,12 @@ document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==
 
 // ── 어른용 설정 (아래 가장자리 3초 길게 누르기) ──────────
 const settings=document.getElementById('settings'), recorder=document.getElementById('recorder');
-let hold=null;
-function openSettings(){ settings.classList.add('open'); clearTimeout(timer); clearTimeout(sleepTimer); gear.classList.remove('hold'); }
-const gear=document.getElementById('gear');
-[gear,document.getElementById('handle')].forEach(el=>{
-  el.addEventListener('pointerdown',e=>{e.preventDefault();gear.classList.add('hold');hold=setTimeout(openSettings,3000);});
-  ['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev,()=>{clearTimeout(hold);gear.classList.remove('hold');}));
-});
-gear.addEventListener('contextmenu',e=>e.preventDefault());
-document.getElementById('close').onclick=()=>{settings.classList.remove('open');applyNight();armSleep();if(asleep)wake();else show();};
+function openSettings(){ settings.classList.add('open'); clearTimeout(timer); clearTimeout(sleepTimer); }
+const gear=document.getElementById('gear'), lockBtn=document.getElementById('lock');
+const isUnlocked=()=>document.body.classList.contains('unlocked');
+lockBtn.addEventListener('click',e=>{e.stopPropagation();document.body.classList.toggle('unlocked');});
+gear.addEventListener('click',e=>{e.stopPropagation(); if(isUnlocked()) openSettings();});
+document.getElementById('close').onclick=()=>{settings.classList.remove('open');document.body.classList.remove('unlocked');applyNight();armSleep();if(asleep)wake();else show();};
 function chips(id,list,isSel,onPick){
   const box=document.getElementById(id); box.innerHTML='';
   list.forEach(([label,val])=>{const b=document.createElement('button');b.className='chip'+(isSel(val)?' sel':'');b.textContent=label;b.onclick=()=>{onPick(val);save();render();};box.appendChild(b);});
