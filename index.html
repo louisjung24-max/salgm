@@ -220,7 +220,7 @@ function speak(t,key){
 }
 function tts(t){
   if(!('speechSynthesis' in window)) return; speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(t); u.lang='ko-KR'; u.rate=.78; u.pitch=1.15; u.volume=.8; if(voice) u.voice=voice;
+  const u=new SpeechSynthesisUtterance(t); u.lang='ko-KR'; u.rate=.8; u.pitch=1.05; u.volume=.8; if(voice) u.voice=voice;
   speechSynthesis.speak(u);
 }
 
