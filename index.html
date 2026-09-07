@@ -37,19 +37,49 @@
   .chip{border:1.5px solid var(--ink);border-radius:999px;padding:9px 18px;background:transparent;color:var(--ink);font-size:16px}
   .chip.sel{background:var(--ink);color:var(--paper)}
   .close{margin-top:14px;font-size:15px;opacity:.6;text-decoration:underline;background:none;border:0;color:var(--ink)}
+  body.night{--paper:#2A2622;--ink:#CFC6B8;--line:#4A443D}
+  body.night .figure{opacity:.82}
+  body.night .t.sel{background:#fff1}
+  #dim{position:absolute;inset:0;background:var(--paper);opacity:0;pointer-events:none;transition:opacity 30s linear;z-index:5}
+  #dim.on{opacity:1;pointer-events:auto}
+  #settings{overflow-y:auto;gap:14px}
+  #settings .lab{font-size:15px;opacity:.6;margin-top:6px}
+  #recorder{position:absolute;inset:0;background:var(--paper);display:none;flex-direction:column;padding:calc(16px + env(safe-area-inset-top)) 18px 18px;z-index:6}
+  #recorder.open{display:flex}
+  #recorder h2{font-size:20px;font-weight:500;letter-spacing:.08em}
+  #recCount{font-size:14px;opacity:.6;margin:6px 0 10px}
+  #recList{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .rc-cat{font-size:14px;opacity:.5;letter-spacing:.1em;margin:16px 0 6px}
+  .rc{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+  .rc-w{flex:1;font-size:18px}
+  .chip.rec{min-width:112px;font-size:14px;padding:8px 12px}
+  .chip.rec.done{border-color:var(--line);opacity:.8}
+  .chip.rec.live{background:#CFA3A0;color:#fff;border-color:#CFA3A0}
+  .chip.small{padding:8px 10px;font-size:14px}
   @media (prefers-reduced-motion:reduce){.card.on{animation-duration:.3s}}
 </style>
 </head>
 <body>
 <div id="topics"></div>
 <div id="stage"><div class="card" id="a"></div><div class="card" id="b"></div></div>
+<div id="dim"></div>
 <div id="handle"></div>
 
 <div id="settings">
   <h2>어른용 설정</h2>
-  <div>넘어가는 속도</div><div class="row" id="speeds"></div>
-  <div>소리</div><div class="row" id="sound"></div>
+  <div class="lab">읽어주는 언어</div><div class="row" id="langs"></div>
+  <div class="lab">잠자리 모드 (저녁 7시~아침 7시)</div><div class="row" id="nights"></div>
+  <div class="lab">자동 종료</div><div class="row" id="sleeps"></div>
+  <div class="lab">넘어가는 속도</div><div class="row" id="speeds"></div>
+  <div class="lab">소리</div><div class="row" id="sound"></div>
+  <div class="lab">엄마·아빠 목소리</div><div class="row"><button class="chip" id="openRec">낱말 녹음하기</button></div>
   <button class="close" id="close">돌아가기</button>
+</div>
+<div id="recorder">
+  <h2>낱말 녹음</h2>
+  <div id="recCount"></div>
+  <div id="recList"></div>
+  <button class="close" id="closeRec">설정으로 돌아가기</button>
 </div>
 
 <script>
@@ -89,7 +119,7 @@ const DECK={
  {w:'별',s:'star',fig:S(star(50,52,44,C.yellow)+hl(44,40,5,4))},
  {w:'하트',s:'heart',fig:S(pa('M50 88 C20 66 8 50 8 34 A18 18 0 0 1 50 26 A18 18 0 0 1 92 34 C92 50 80 66 50 88 Z',C.purple,L)+hl(30,40,6,5))},
  {w:'타원',s:'oval',fig:S(el(50,50,44,28,C.orange,L)+hl(32,40,10,5))},
- {w:'초승달',s:'moon',fig:S(ci(50,50,42,C.yellow,L)+ci(68,42,34,'#EDE7DC')+ci(30,40,3,C.dyellow,'opacity=".6"')+ci(24,62,4,C.dyellow,'opacity=".6"'))},
+ {w:'초승달',s:'moon',fig:S(ci(50,50,42,C.yellow,L)+ci(68,42,34,'var(--paper)')+ci(30,40,3,C.dyellow,'opacity=".6"')+ci(24,62,4,C.dyellow,'opacity=".6"'))},
  {w:'마름모',s:'diamond',fig:S(poly(['50 8','90 50','50 92','10 50'],C.red)+hl(40,40,5,7))},
  {w:'육각형',s:'hexagon',fig:S(poly(['50 8','86 29','86 71','50 92','14 71','14 29'],C.blue)+hl(34,32,7,5))},
  {w:'십자',s:'cross',fig:S(re(36,8,28,84,8,C.green,L)+re(8,36,84,28,8,C.green,L)+re(36,36,28,28,0,C.green)+hl(46,20,4,6))}],
@@ -134,7 +164,7 @@ const DECK={
 
 '날씨':[
  {w:'해',s:'sun',fig:S([...Array(8)].map((_,i)=>`<path d="M50 4 L50 16" stroke="${C.yellow}" stroke-width="5" stroke-linecap="round" transform="rotate(${i*45} 50 50)"/>`).join('')+ci(50,50,24,C.yellow,L)+hl(42,42,6,4)+eyes(44,56,50)+smile(50,56)+cheeks(38,62,56))},
- {w:'달',s:'moon',fig:S(ci(50,50,42,C.yellow,L)+ci(68,42,34,'#EDE7DC')+ci(30,40,3,C.dyellow,'opacity=".6"')+ci(24,62,4,C.dyellow,'opacity=".6"')+ci(36,76,2.5,C.dyellow,'opacity=".6"')+star(82,26,6,C.yellow)+star(88,50,4,C.yellow))},
+ {w:'달',s:'moon',fig:S(ci(50,50,42,C.yellow,L)+ci(68,42,34,'var(--paper)')+ci(30,40,3,C.dyellow,'opacity=".6"')+ci(24,62,4,C.dyellow,'opacity=".6"')+ci(36,76,2.5,C.dyellow,'opacity=".6"')+star(82,26,6,C.yellow)+star(88,50,4,C.yellow))},
  {w:'별',s:'star',fig:S(star(50,52,44,C.yellow)+hl(44,40,5,4)+star(14,16,6,C.yellow)+star(88,24,5,C.yellow))},
  {w:'구름',s:'cloud',fig:S(ci(34,58,20,C.white,L)+ci(54,46,24,C.white,L)+ci(72,60,18,C.white,L)+re(20,60,70,18,9,C.white)+ci(34,58,17,C.white)+ci(54,46,21,C.white)+ci(72,60,15,C.white)+re(23,62,64,13,7,C.white)+eyes(46,60,58)+smile(53,64)+cheeks(38,68,64))},
  {w:'비',s:'rain',fig:S(ci(34,40,16,C.blue,L)+ci(54,30,20,C.blue,L)+ci(72,42,14,C.blue,L)+re(20,42,66,14,7,C.blue)+ci(34,40,13,C.blue)+ci(54,30,17,C.blue)+ci(72,42,11,C.blue)+[[32,66],[50,66],[68,66],[41,80],[59,80]].map(p=>pa(`M${p[0]} ${p[1]-8} Q${p[0]+5} ${p[1]} ${p[0]} ${p[1]+4} Q${p[0]-5} ${p[1]} ${p[0]} ${p[1]-8} Z`,C.dblue)).join(''))},
@@ -182,27 +212,62 @@ const DECK={
 };
 Object.keys(DECK).forEach(k=>{ if(DECK[k].length!==10) console.warn(k,DECK[k].length); });
 
+// ── 일본어·영어 낱말 붙이기 ─────────────────────────────
+const JA={
+'색깔':['あか','オレンジ','きいろ','みどり','あお','むらさき','ピンク','ちゃいろ','しろ','くろ'],
+'모양':['まる','しかく','さんかく','ほし','ハート','だえん','みかづき','ひしがた','ろっかくけい','じゅうじ'],
+'동물':['ねこ','くま','うさぎ','かえる','さかな','いぬ','ひよこ','ぶた','ふくろう','かたつむり'],
+'숫자':['いち','に','さん','し','ご','ろく','なな','はち','きゅう','じゅう'],
+'과일':['りんご','バナナ','ぶどう','いちご','すいか','オレンジ','なし','さくらんぼ','レモン','もも'],
+'탈것':['くるま','バス','でんしゃ','ふね','ひこうき','じてんしゃ','トラック','ヘリコプター','ロケット','ききゅう'],
+'날씨':['たいよう','つき','ほし','くも','あめ','ゆき','にじ','かみなり','かぜ','かさ'],
+'집':['コップ','スプーン','いす','ベッド','ほん','ボール','ぼうし','くつ','とけい','ドア'],
+'자연':['き','はな','やま','はっぱ','きのこ','なみ','いし','くさ','かい','ひまわり'],
+'음식':['ごはん','パン','ぎゅうにゅう','たまご','ケーキ','あめ','アイスクリーム','クッキー','ジュース','にんじん']};
+const NUM_EN=['one','two','three','four','five','six','seven','eight','nine','ten'];
+Object.entries(DECK).forEach(([k,v])=>v.forEach((it,i)=>{
+  it.cat=k; it.j=JA[k][i];
+  it.e = k==='숫자' ? NUM_EN[i] : it.s.replace(/-/g,' ').replace(/^\w/,c=>c.toUpperCase());
+}));
+const LANGS={ko:{word:it=>it.w,sub:it=>it.e,tts:'ko-KR'},en:{word:it=>it.e,sub:it=>it.w,tts:'en-US'},ja:{word:it=>it.j,sub:it=>it.w,tts:'ja-JP'}};
+
 // ── 상태 ────────────────────────────────────────────────
-const P={topic:'전부',speed:8000,sound:true};
+const P={topic:'전부',speed:8000,sound:true,lang:'ko',night:'auto',sleep:0};
 try{Object.assign(P,JSON.parse(localStorage.getItem('salgm')||'{}'));}catch(e){}
 const save=()=>localStorage.setItem('salgm',JSON.stringify(P));
 
-let queue=[],idx=0,front='a',timer=null;
+// ── 잠자리 모드 ─────────────────────────────────────────
+function isNight(){ if(P.night==='on') return true; if(P.night==='off') return false; const h=new Date().getHours(); return h>=19||h<7; }
+function applyNight(){ document.body.classList.toggle('night',isNight()); }
+setInterval(applyNight,60000);
+
+let queue=[],idx=0,front='a',timer=null,asleep=false;
 function build(){
   queue = P.topic==='전부' ? Object.values(DECK).flat() : DECK[P.topic].slice();
   for(let i=queue.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[queue[i],queue[j]]=[queue[j],queue[i]];}
   idx=0;
 }
 function show(){
+  if(asleep) return;
   if(!queue.length) build();
   const item=queue[idx]; idx=(idx+1)%queue.length; if(idx===0) build();
-  const back=front==='a'?'b':'a', e=document.getElementById(back);
-  e.innerHTML=`<div class="figure">${item.fig}</div><div class="word">${item.w}</div><div class="sub">${item.s}</div>`;
+  const back=front==='a'?'b':'a', e=document.getElementById(back), Lg=LANGS[P.lang];
+  e.innerHTML=`<div class="figure">${item.fig}</div><div class="word">${Lg.word(item)}</div><div class="sub">${Lg.sub(item)}</div>`;
   document.getElementById(front).classList.remove('on'); e.classList.add('on'); front=back;
-  speak(item.w,item.s);
-  clearTimeout(timer); timer=setTimeout(show,P.speed);
+  speak(Lg.word(item),item.s);
+  clearTimeout(timer); timer=setTimeout(show,P.speed*(isNight()?1.5:1));
 }
-document.getElementById('stage').addEventListener('pointerdown',()=>{ if(!settings.classList.contains('open')) show(); });
+document.getElementById('stage').addEventListener('pointerdown',()=>{
+  if(settings.classList.contains('open')||recorder.classList.contains('open')) return;
+  if(asleep){ wake(); return; }
+  show();
+});
+
+// ── 자동 종료 ───────────────────────────────────────────
+const dim=document.getElementById('dim'); let sleepTimer=null;
+function armSleep(){ clearTimeout(sleepTimer); if(P.sleep) sleepTimer=setTimeout(fallAsleep,P.sleep*60000); }
+function fallAsleep(){ asleep=true; dim.classList.add('on'); clearTimeout(timer); player.pause(); if('speechSynthesis' in window) speechSynthesis.cancel(); }
+function wake(){ asleep=false; dim.classList.remove('on'); armSleep(); show(); }
 
 // ── 상단 주제 버튼 ───────────────────────────────────────
 const topics=document.getElementById('topics');
@@ -213,40 +278,95 @@ const topics=document.getElementById('topics');
 });
 topics.querySelector('.sel')?.scrollIntoView({inline:'center'});
 
-// ── 소리 ────────────────────────────────────────────────
-const PREFER=['Yuna','유나','SunHi','선히','Google 한국의','Heami'];
+// ── 녹음 저장소 (IndexedDB, 폰 안에만 저장) ──────────────
+const DB=new Promise((res,rej)=>{const r=indexedDB.open('salgm',1);r.onupgradeneeded=()=>r.result.createObjectStore('rec');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});
+const recKey=k=>`${P.lang}:${k}`;
+const recGet=k=>DB.then(db=>new Promise(res=>{const q=db.transaction('rec').objectStore('rec').get(recKey(k));q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);}));
+const recPut=(k,blob)=>DB.then(db=>new Promise(res=>{const t=db.transaction('rec','readwrite');t.objectStore('rec').put(blob,recKey(k));t.oncomplete=res;}));
+const recDel=k=>DB.then(db=>new Promise(res=>{const t=db.transaction('rec','readwrite');t.objectStore('rec').delete(recKey(k));t.oncomplete=res;}));
+const recKeys=()=>DB.then(db=>new Promise(res=>{const q=db.transaction('rec').objectStore('rec').getAllKeys();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([]);}));
+
+// ── 소리: 1순위 부모 녹음 → 2순위 audio/*.mp3 → 3순위 기기 음성 ──
+const PREFER={ko:['Yuna','유나','SunHi','선히','Google 한국의','Heami'],en:['Samantha','Ava','Aria','Jenny','Google US English','Zira'],ja:['Kyoko','O-ren','Nanami','Google 日本語']};
 let voice=null;
 function pickVoice(){
-  const vs=speechSynthesis.getVoices().filter(v=>v.lang.replace('_','-').startsWith('ko')); if(!vs.length) return;
-  voice=vs.find(v=>PREFER.some(p=>v.name.includes(p))&&!v.localService)||vs.find(v=>PREFER.some(p=>v.name.includes(p)))||vs[0];
+  const code=LANGS[P.lang].tts.slice(0,2), vs=speechSynthesis.getVoices().filter(v=>v.lang.replace('_','-').startsWith(code)); if(!vs.length){voice=null;return;}
+  const pref=PREFER[P.lang];
+  voice=vs.find(v=>pref.some(p=>v.name.includes(p))&&!v.localService)||vs.find(v=>pref.some(p=>v.name.includes(p)))||vs[0];
 }
 if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice;}
-const player=new Audio(); player.volume=.8;
+const player=new Audio();
 function speak(t,key){
-  if(!P.sound) return; player.pause();
-  const src=`audio/${key}.mp3`;
-  fetch(src,{method:'HEAD'}).then(r=>{ if(r.ok){player.src=src;player.play().catch(()=>{});} else tts(t); }).catch(()=>tts(t));
+  if(!P.sound) return; player.pause(); player.volume=isNight()?.45:.8;
+  recGet(key).then(blob=>{
+    if(blob){ player.src=URL.createObjectURL(blob); player.play().catch(()=>{}); return; }
+    const src=`audio/${P.lang==='ko'?'':P.lang+'/'}${key}.mp3`;
+    return fetch(src,{method:'HEAD'}).then(r=>{ if(r.ok){player.src=src;player.play().catch(()=>{});} else tts(t); }).catch(()=>tts(t));
+  });
 }
 function tts(t){
   if(!('speechSynthesis' in window)) return; speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(t); u.lang='ko-KR'; u.rate=.8; u.pitch=1.05; u.volume=.8; if(voice) u.voice=voice;
+  const u=new SpeechSynthesisUtterance(t); u.lang=LANGS[P.lang].tts; u.rate=.8; u.pitch=1.05; u.volume=isNight()?.45:.8; if(voice) u.voice=voice;
   speechSynthesis.speak(u);
 }
 
 // ── 어른용 설정 (아래 가장자리 3초 길게 누르기) ──────────
-const settings=document.getElementById('settings'); let hold=null; const h=document.getElementById('handle');
-h.addEventListener('pointerdown',()=>{hold=setTimeout(()=>{settings.classList.add('open');clearTimeout(timer);},3000);});
+const settings=document.getElementById('settings'), recorder=document.getElementById('recorder');
+let hold=null; const h=document.getElementById('handle');
+h.addEventListener('pointerdown',()=>{hold=setTimeout(()=>{settings.classList.add('open');clearTimeout(timer);clearTimeout(sleepTimer);},3000);});
 ['pointerup','pointerleave','pointercancel'].forEach(ev=>h.addEventListener(ev,()=>clearTimeout(hold)));
-document.getElementById('close').onclick=()=>{settings.classList.remove('open');show();};
+document.getElementById('close').onclick=()=>{settings.classList.remove('open');applyNight();armSleep();if(asleep)wake();else show();};
 function chips(id,list,isSel,onPick){
   const box=document.getElementById(id); box.innerHTML='';
   list.forEach(([label,val])=>{const b=document.createElement('button');b.className='chip'+(isSel(val)?' sel':'');b.textContent=label;b.onclick=()=>{onPick(val);save();render();};box.appendChild(b);});
 }
 function render(){
+  chips('langs',[['한국어','ko'],['English','en'],['日本語','ja']],v=>P.lang===v,v=>{P.lang=v;pickVoice();});
+  chips('nights',[['저녁 자동','auto'],['항상','on'],['끄기','off']],v=>P.night===v,v=>P.night=v);
+  chips('sleeps',[['없음',0],['10분',10],['20분',20],['30분',30]],v=>P.sleep===v,v=>P.sleep=v);
   chips('speeds',[['느리게',12000],['보통',8000],['조금 빠르게',5000]],v=>P.speed===v,v=>P.speed=v);
   chips('sound',[['켜기',true],['끄기',false]],v=>P.sound===v,v=>P.sound=v);
 }
-render(); build(); show();
+
+// ── 녹음 화면 ───────────────────────────────────────────
+document.getElementById('openRec').onclick=()=>{settings.classList.remove('open');recorder.classList.add('open');renderRec();};
+document.getElementById('closeRec').onclick=()=>{recorder.classList.remove('open');settings.classList.add('open');};
+let mediaRec=null, chunks=[], recTarget=null;
+async function startRec(key,btn){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const mime=['audio/mp4','audio/webm;codecs=opus','audio/webm',''].find(m=>!m||MediaRecorder.isTypeSupported(m));
+    mediaRec=new MediaRecorder(stream,mime?{mimeType:mime}:{}); chunks=[]; recTarget=key;
+    mediaRec.ondataavailable=e=>chunks.push(e.data);
+    mediaRec.onstop=async()=>{ stream.getTracks().forEach(t=>t.stop()); const blob=new Blob(chunks,{type:mediaRec.mimeType||'audio/webm'}); if(blob.size>1000) await recPut(key,blob); renderRec(); };
+    mediaRec.start(); btn.classList.add('live'); btn.textContent='● 녹음 중… 손을 떼면 저장';
+  }catch(e){ alert('마이크를 사용할 수 없습니다. 브라우저 설정에서 마이크 권한을 허용해 주세요.'); }
+}
+function stopRec(){ if(mediaRec&&mediaRec.state==='recording') mediaRec.stop(); }
+async function renderRec(){
+  const list=document.getElementById('recList'); const have=new Set(await recKeys()); const Lg=LANGS[P.lang];
+  document.getElementById('recCount').textContent=`${[...have].filter(k=>k.startsWith(P.lang+':')).length} / 100 녹음됨 · ${{ko:'한국어',en:'English',ja:'日本語'}[P.lang]}`;
+  list.innerHTML='';
+  Object.entries(DECK).forEach(([cat,items])=>{
+    const hd=document.createElement('div'); hd.className='rc-cat'; hd.textContent=cat; list.appendChild(hd);
+    items.forEach(it=>{
+      const row=document.createElement('div'); row.className='rc';
+      const done=have.has(recKey(it.s));
+      row.innerHTML=`<span class="rc-w">${Lg.word(it)}</span>`;
+      const b=document.createElement('button'); b.className='chip rec'+(done?' done':''); b.textContent=done?'다시 녹음':'꾹 눌러 녹음';
+      b.addEventListener('pointerdown',e=>{e.preventDefault();startRec(it.s,b);});
+      ['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,stopRec));
+      row.appendChild(b);
+      if(done){
+        const p=document.createElement('button'); p.className='chip small'; p.textContent='▶'; p.onclick=async()=>{const bl=await recGet(it.s); player.volume=.8; player.src=URL.createObjectURL(bl); player.play();}; row.appendChild(p);
+        const d=document.createElement('button'); d.className='chip small'; d.textContent='지우기'; d.onclick=async()=>{await recDel(it.s);renderRec();}; row.appendChild(d);
+      }
+      list.appendChild(row);
+    });
+  });
+}
+
+render(); applyNight(); build(); show(); armSleep();
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
