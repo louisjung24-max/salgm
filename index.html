@@ -74,6 +74,7 @@
   <div class="lab">소리</div><div class="row" id="sound"></div>
   <div class="lab">엄마·아빠 목소리</div><div class="row"><button class="chip" id="openRec">낱말 녹음하기</button></div>
   <button class="close" id="close">돌아가기</button>
+  <div class="lab" style="margin-top:4px">v7</div>
 </div>
 <div id="recorder">
   <h2>낱말 녹음</h2>
@@ -295,20 +296,40 @@ function pickVoice(){
   voice=vs.find(v=>pref.some(p=>v.name.includes(p))&&!v.localService)||vs.find(v=>pref.some(p=>v.name.includes(p)))||vs[0];
 }
 if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice;}
-const player=new Audio();
+
+// 녹음된 낱말 목록은 메모리에 들고 있어 터치 즉시 판단합니다
+const recorded=new Set(); recKeys().then(ks=>ks.forEach(k=>recorded.add(k)));
+const mp3Known={};   // key → true/false (한 번 확인한 결과 기억)
+const player=new Audio(); player.preload='auto';
+// 아이폰: 첫 터치 안에서 소리 권한을 열어 둡니다
+let unlocked=false;
+function unlockAudio(){
+  if(unlocked) return; unlocked=true;
+  try{ player.src='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA='; player.play().catch(()=>{}); }catch(e){}
+  try{ if('speechSynthesis' in window){ const u=new SpeechSynthesisUtterance(' '); u.volume=0; speechSynthesis.speak(u); } }catch(e){}
+}
+document.addEventListener('pointerdown',unlockAudio,{capture:true});
+document.addEventListener('touchstart',unlockAudio,{capture:true,passive:true});
+
 function speak(t,key){
   if(!P.sound) return; player.pause(); player.volume=isNight()?.45:.8;
-  recGet(key).then(blob=>{
-    if(blob){ player.src=URL.createObjectURL(blob); player.play().catch(()=>{}); return; }
-    const src=`audio/${P.lang==='ko'?'':P.lang+'/'}${key}.mp3`;
-    return fetch(src,{method:'HEAD'}).then(r=>{ if(r.ok){player.src=src;player.play().catch(()=>{});} else tts(t); }).catch(()=>tts(t));
-  });
+  if(recorded.has(recKey(key))){ recGet(key).then(blob=>{ if(blob){player.src=URL.createObjectURL(blob);player.play().catch(()=>{});} else tts(t); }); return; }
+  const src=`audio/${P.lang==='ko'?'':P.lang+'/'}${key}.mp3`;
+  if(mp3Known[src]===true){ player.src=src; player.play().catch(()=>tts(t)); return; }
+  tts(t);   // 터치한 그 순간 바로 말합니다
+  if(mp3Known[src]===undefined){ mp3Known[src]=false; fetch(src,{method:'HEAD'}).then(r=>{mp3Known[src]=r.ok;}).catch(()=>{}); }
 }
 function tts(t){
   if(!('speechSynthesis' in window)) return; speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance(t); u.lang=LANGS[P.lang].tts; u.rate=.8; u.pitch=1.05; u.volume=isNight()?.45:.8; if(voice) u.voice=voice;
   speechSynthesis.speak(u);
 }
+
+// ── 화면 꺼짐 방지 ───────────────────────────────────────
+let lock=null;
+async function keepAwake(){ try{ if('wakeLock' in navigator && !lock){ lock=await navigator.wakeLock.request('screen'); lock.addEventListener('release',()=>{lock=null;}); } }catch(e){} }
+document.addEventListener('pointerdown',keepAwake,{once:false});
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') keepAwake(); });
 
 // ── 어른용 설정 (아래 가장자리 3초 길게 누르기) ──────────
 const settings=document.getElementById('settings'), recorder=document.getElementById('recorder');
@@ -338,7 +359,7 @@ async function startRec(key,btn){
     const mime=['audio/mp4','audio/webm;codecs=opus','audio/webm',''].find(m=>!m||MediaRecorder.isTypeSupported(m));
     mediaRec=new MediaRecorder(stream,mime?{mimeType:mime}:{}); chunks=[]; recTarget=key;
     mediaRec.ondataavailable=e=>chunks.push(e.data);
-    mediaRec.onstop=async()=>{ stream.getTracks().forEach(t=>t.stop()); const blob=new Blob(chunks,{type:mediaRec.mimeType||'audio/webm'}); if(blob.size>1000) await recPut(key,blob); renderRec(); };
+    mediaRec.onstop=async()=>{ stream.getTracks().forEach(t=>t.stop()); const blob=new Blob(chunks,{type:mediaRec.mimeType||'audio/webm'}); if(blob.size>1000){ await recPut(key,blob); recorded.add(recKey(key)); } renderRec(); };
     mediaRec.start(); btn.classList.add('live'); btn.textContent='● 녹음 중… 손을 떼면 저장';
   }catch(e){ alert('마이크를 사용할 수 없습니다. 브라우저 설정에서 마이크 권한을 허용해 주세요.'); }
 }
@@ -359,7 +380,7 @@ async function renderRec(){
       row.appendChild(b);
       if(done){
         const p=document.createElement('button'); p.className='chip small'; p.textContent='▶'; p.onclick=async()=>{const bl=await recGet(it.s); player.volume=.8; player.src=URL.createObjectURL(bl); player.play();}; row.appendChild(p);
-        const d=document.createElement('button'); d.className='chip small'; d.textContent='지우기'; d.onclick=async()=>{await recDel(it.s);renderRec();}; row.appendChild(d);
+        const d=document.createElement('button'); d.className='chip small'; d.textContent='지우기'; d.onclick=async()=>{await recDel(it.s);recorded.delete(recKey(it.s));renderRec();}; row.appendChild(d);
       }
       list.appendChild(row);
     });
