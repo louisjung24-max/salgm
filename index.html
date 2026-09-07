@@ -15,7 +15,11 @@
   body{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;color:var(--ink);display:flex;flex-direction:column}
 
   /* 상단 주제 버튼: 가로로 밀어서 봅니다 */
-  #topics{display:flex;gap:8px;overflow-x:auto;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;scrollbar-width:none;flex-shrink:0}
+  #topbar{display:flex;justify-content:flex-end;align-items:center;padding:calc(6px + env(safe-area-inset-top)) 10px 0;flex-shrink:0}
+  #topics{display:flex;gap:8px;overflow-x:auto;padding:4px 14px 10px;scrollbar-width:none;flex-shrink:0}
+  #gear{width:48px;height:36px;border:0;background:transparent;color:var(--ink);opacity:.3;font-size:14px;letter-spacing:1px;border-radius:12px}
+  #gear.hold{opacity:.8;background:#fff5}
+  body.night #gear.hold{background:#fff2}
   #topics::-webkit-scrollbar{display:none}
   .t{flex:0 0 auto;border:1.5px solid var(--line);border-radius:999px;padding:8px 15px;background:transparent;color:var(--ink);font-size:15px;opacity:.6;transition:opacity .4s,background .4s}
   .t.sel{opacity:1;background:#fff8;border-color:var(--ink)}
@@ -60,6 +64,7 @@
 </style>
 </head>
 <body>
+<div id="topbar"><button id="gear" aria-label="어른용 설정">•••</button></div>
 <div id="topics"></div>
 <div id="stage"><div class="card" id="a"></div><div class="card" id="b"></div></div>
 <div id="dim"></div>
@@ -74,7 +79,7 @@
   <div class="lab">소리</div><div class="row" id="sound"></div>
   <div class="lab">엄마·아빠 목소리</div><div class="row"><button class="chip" id="openRec">낱말 녹음하기</button></div>
   <button class="close" id="close">돌아가기</button>
-  <div class="lab" style="margin-top:4px">v7</div>
+  <div class="lab" style="margin-top:4px">v9</div>
 </div>
 <div id="recorder">
   <h2>낱말 녹음</h2>
@@ -333,9 +338,14 @@ document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==
 
 // ── 어른용 설정 (아래 가장자리 3초 길게 누르기) ──────────
 const settings=document.getElementById('settings'), recorder=document.getElementById('recorder');
-let hold=null; const h=document.getElementById('handle');
-h.addEventListener('pointerdown',()=>{hold=setTimeout(()=>{settings.classList.add('open');clearTimeout(timer);clearTimeout(sleepTimer);},3000);});
-['pointerup','pointerleave','pointercancel'].forEach(ev=>h.addEventListener(ev,()=>clearTimeout(hold)));
+let hold=null;
+function openSettings(){ settings.classList.add('open'); clearTimeout(timer); clearTimeout(sleepTimer); gear.classList.remove('hold'); }
+const gear=document.getElementById('gear');
+[gear,document.getElementById('handle')].forEach(el=>{
+  el.addEventListener('pointerdown',e=>{e.preventDefault();gear.classList.add('hold');hold=setTimeout(openSettings,3000);});
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev,()=>{clearTimeout(hold);gear.classList.remove('hold');}));
+});
+gear.addEventListener('contextmenu',e=>e.preventDefault());
 document.getElementById('close').onclick=()=>{settings.classList.remove('open');applyNight();armSleep();if(asleep)wake();else show();};
 function chips(id,list,isSel,onPick){
   const box=document.getElementById(id); box.innerHTML='';
