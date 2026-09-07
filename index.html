@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#EDE7DC">
+<title>살금살금</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  :root{
+    --paper:#EDE7DC;   /* 배경: 채도 낮은 리넨색 */
+    --ink:#5B5750;     /* 글자: 부드러운 회갈색 */
+    --sage:#A9B8A3;
+    --sky:#A7B9C7;
+    --peach:#D9B8A8;
+    --butter:#DFD3A8;
+    --lilac:#BDB2C6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+  html,body{height:100%;overflow:hidden;background:var(--paper);touch-action:manipulation}
+  body{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;color:var(--ink);display:flex;flex-direction:column}
+
+  /* 카드가 한 장씩 아주 천천히 교차하며 바뀝니다 */
+  #stage{position:relative;flex:1}
+  .card{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+        opacity:0;transition:opacity 1.6s ease}
+  .card.on{opacity:1}
+  .figure{width:min(58vw,300px);height:min(58vw,300px);display:flex;align-items:center;justify-content:center}
+  .figure svg{width:100%;height:100%;overflow:visible}
+  .word{margin-top:8vh;font-size:clamp(34px,9vw,56px);font-weight:500;letter-spacing:.06em;text-align:center}
+  .sub{margin-top:1.2vh;font-size:clamp(15px,4vw,20px);opacity:.55;letter-spacing:.1em}
+
+  /* 부모용: 아래 가장자리를 3초 이상 누르면 설정이 열립니다 */
+  #handle{height:max(24px,env(safe-area-inset-bottom))}
+  #settings{position:absolute;inset:0;background:rgba(237,231,220,.97);display:none;flex-direction:column;
+            justify-content:center;align-items:center;gap:22px;padding:28px;font-size:18px}
+  #settings.open{display:flex}
+  #settings h2{font-size:20px;font-weight:500;letter-spacing:.08em;margin-bottom:8px}
+  .row{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+  .chip{border:1.5px solid var(--ink);border-radius:999px;padding:9px 18px;background:transparent;color:var(--ink);font-size:16px}
+  .chip.sel{background:var(--ink);color:var(--paper)}
+  .close{margin-top:14px;font-size:15px;opacity:.6;text-decoration:underline;background:none;border:0;color:var(--ink)}
+  @media (prefers-reduced-motion:reduce){.card{transition:opacity .3s}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="card" id="a"></div>
+  <div class="card" id="b"></div>
+</div>
+<div id="handle"></div>
+
+<div id="settings">
+  <h2>어른용 설정</h2>
+  <div>보여줄 내용</div>
+  <div class="row" id="cats"></div>
+  <div>넘어가는 속도</div>
+  <div class="row" id="speeds"></div>
+  <div>소리</div>
+  <div class="row" id="sound"></div>
+  <button class="close" id="close">돌아가기</button>
+</div>
+
+<script>
+// ── 콘텐츠 ────────────────────────────────────────────────
+const C = { sage:'#A9B8A3', sky:'#A7B9C7', peach:'#D9B8A8', butter:'#DFD3A8', lilac:'#BDB2C6', ink:'#5B5750' };
+const S = (inner) => `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+const circle = (c)=>S(`<circle cx="50" cy="50" r="42" fill="${c}"/>`);
+
+const DECK = {
+  '색깔': [
+    { w:'초록', s:'green',  fig:circle(C.sage) },
+    { w:'파랑', s:'blue',   fig:circle(C.sky) },
+    { w:'분홍', s:'pink',   fig:circle(C.peach) },
+    { w:'노랑', s:'yellow', fig:circle(C.butter) },
+    { w:'보라', s:'purple', fig:circle(C.lilac) },
+  ],
+  '모양': [
+    { w:'동그라미', s:'circle',   fig:circle(C.sky) },
+    { w:'네모',     s:'square',   fig:S(`<rect x="12" y="12" width="76" height="76" rx="10" fill="${C.sage}"/>`) },
+    { w:'세모',     s:'triangle', fig:S(`<path d="M50 10 L92 86 L8 86 Z" fill="${C.peach}" stroke="${C.peach}" stroke-width="8" stroke-linejoin="round"/>`) },
+    { w:'별',       s:'star',     fig:S(`<path d="M50 8 L61 38 L94 38 L67 57 L77 90 L50 70 L23 90 L33 57 L6 38 L39 38 Z" fill="${C.butter}" stroke="${C.butter}" stroke-width="6" stroke-linejoin="round"/>`) },
+    { w:'하트',     s:'heart',    fig:S(`<path d="M50 88 C20 66 8 50 8 34 A18 18 0 0 1 50 26 A18 18 0 0 1 92 34 C92 50 80 66 50 88 Z" fill="${C.lilac}"/>`) },
+  ],
+  '동물': [
+    { w:'고양이', s:'cat', fig:S(`<path d="M22 40 L18 10 L40 26 Z M78 40 L82 10 L60 26 Z" fill="${C.peach}"/><circle cx="50" cy="55" r="36" fill="${C.peach}"/><circle cx="38" cy="52" r="3.5" fill="${C.ink}"/><circle cx="62" cy="52" r="3.5" fill="${C.ink}"/><path d="M45 64 Q50 69 55 64" stroke="${C.ink}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`) },
+    { w:'곰',     s:'bear', fig:S(`<circle cx="24" cy="26" r="13" fill="${C.butter}"/><circle cx="76" cy="26" r="13" fill="${C.butter}"/><circle cx="50" cy="55" r="36" fill="${C.butter}"/><circle cx="38" cy="50" r="3.5" fill="${C.ink}"/><circle cx="62" cy="50" r="3.5" fill="${C.ink}"/><ellipse cx="50" cy="63" rx="7" ry="5" fill="${C.ink}" opacity=".7"/>`) },
+    { w:'토끼',   s:'rabbit', fig:S(`<ellipse cx="36" cy="22" rx="9" ry="22" fill="${C.lilac}"/><ellipse cx="64" cy="22" rx="9" ry="22" fill="${C.lilac}"/><circle cx="50" cy="60" r="32" fill="${C.lilac}"/><circle cx="40" cy="57" r="3.5" fill="${C.ink}"/><circle cx="60" cy="57" r="3.5" fill="${C.ink}"/><circle cx="50" cy="67" r="3" fill="${C.ink}" opacity=".7"/>`) },
+    { w:'개구리', s:'frog', fig:S(`<circle cx="30" cy="30" r="12" fill="${C.sage}"/><circle cx="70" cy="30" r="12" fill="${C.sage}"/><circle cx="30" cy="30" r="4" fill="${C.ink}"/><circle cx="70" cy="30" r="4" fill="${C.ink}"/><ellipse cx="50" cy="60" rx="40" ry="30" fill="${C.sage}"/><path d="M36 64 Q50 74 64 64" stroke="${C.ink}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`) },
+    { w:'물고기', s:'fish', fig:S(`<path d="M78 50 L96 34 L96 66 Z" fill="${C.sky}"/><ellipse cx="46" cy="50" rx="36" ry="24" fill="${C.sky}"/><circle cx="28" cy="46" r="3.5" fill="${C.ink}"/>`) },
+  ],
+  '숫자': [1,2,3,4,5].map(n=>({
+    w:['하나','둘','셋','넷','다섯'][n-1], s:String(n),
+    fig:S([...Array(n)].map((_,i)=>{
+      const cols=Math.min(n,3), row=Math.floor(i/3), col=i%3, inRow=Math.min(n-row*3,3);
+      const x=50+(col-(inRow-1)/2)*26, y=n>3?36+row*30:50;
+      return `<circle cx="${x}" cy="${y}" r="10" fill="${[C.sage,C.sky,C.peach,C.butter,C.lilac][i]}"/>`;
+    }).join(''))
+  })),
+};
+
+// ── 상태 ────────────────────────────────────────────────
+const P = { cats:['색깔','모양','동물','숫자'], speed:8000, sound:true };
+try{ Object.assign(P, JSON.parse(localStorage.getItem('salgm')||'{}')); }catch(e){}
+const save=()=>localStorage.setItem('salgm',JSON.stringify(P));
+
+let queue=[], idx=0, front='a', timer=null;
+function build(){
+  queue = P.cats.flatMap(c=>DECK[c].map(i=>({...i,cat:c})));
+  for(let i=queue.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[queue[i],queue[j]]=[queue[j],queue[i]];}
+  idx=0;
+}
+function speak(t){
+  if(!P.sound||!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(t); u.lang='ko-KR'; u.rate=.8; u.pitch=1.05; u.volume=.8;
+  speechSynthesis.speak(u);
+}
+function show(){
+  if(!queue.length) build();
+  const item=queue[idx]; idx=(idx+1)%queue.length; if(idx===0) build();
+  const back = front==='a'?'b':'a';
+  const el=document.getElementById(back);
+  el.innerHTML=`<div class="figure">${item.fig}</div><div class="word">${item.w}</div><div class="sub">${item.s}</div>`;
+  document.getElementById(front).classList.remove('on');
+  el.classList.add('on'); front=back;
+  speak(item.w);
+  clearTimeout(timer); timer=setTimeout(show,P.speed);
+}
+
+// 화면 어디를 눌러도 다음으로 (설정이 열려있지 않을 때만)
+document.getElementById('stage').addEventListener('pointerdown',()=>{
+  if(!settings.classList.contains('open')) show();
+});
+
+// ── 어른용 설정 (아래 가장자리 3초 길게 누르기) ──────────
+const settings=document.getElementById('settings');
+let hold=null;
+const h=document.getElementById('handle');
+h.addEventListener('pointerdown',()=>{hold=setTimeout(()=>{settings.classList.add('open');clearTimeout(timer);},3000);});
+['pointerup','pointerleave','pointercancel'].forEach(e=>h.addEventListener(e,()=>clearTimeout(hold)));
+document.getElementById('close').onclick=()=>{settings.classList.remove('open');build();show();};
+
+function chips(id, list, isSel, onPick){
+  const box=document.getElementById(id); box.innerHTML='';
+  list.forEach(([label,val])=>{
+    const b=document.createElement('button'); b.className='chip'+(isSel(val)?' sel':''); b.textContent=label;
+    b.onclick=()=>{onPick(val);save();render();}; box.appendChild(b);
+  });
+}
+function render(){
+  chips('cats', Object.keys(DECK).map(c=>[c,c]), v=>P.cats.includes(v), v=>{
+    P.cats = P.cats.includes(v) ? P.cats.filter(x=>x!==v) : [...P.cats,v];
+    if(!P.cats.length) P.cats=[v];
+  });
+  chips('speeds', [['느리게',12000],['보통',8000],['조금 빠르게',5000]], v=>P.speed===v, v=>P.speed=v);
+  chips('sound', [['켜기',true],['끄기',false]], v=>P.sound===v, v=>P.sound=v);
+}
+render();
+
+// iOS는 첫 터치 이후에만 소리가 나므로, 첫 화면은 조용히 시작합니다
+build(); show();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
