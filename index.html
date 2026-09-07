@@ -112,10 +112,36 @@ function build(){
   for(let i=queue.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[queue[i],queue[j]]=[queue[j],queue[i]];}
   idx=0;
 }
-function speak(t){
-  if(!P.sound||!('speechSynthesis' in window)) return;
+// ── 소리 ────────────────────────────────────────────────
+// 1순위: audio/ 폴더에 녹음 파일(mp3)이 있으면 그것을 재생
+// 2순위: 기기에 있는 목소리 중 가장 자연스러운 한국어 여성 음성
+const PREFER = ['Yuna','유나','SunHi','선히','Google 한국의','Heami','Microsoft SunHi Online','Microsoft Heami'];
+let voice=null;
+function pickVoice(){
+  const vs=speechSynthesis.getVoices().filter(v=>v.lang.replace('_','-').startsWith('ko'));
+  if(!vs.length) return;
+  voice = vs.find(v=>PREFER.some(p=>v.name.includes(p)) && !v.localService) // Online/Natural 우선
+       || vs.find(v=>PREFER.some(p=>v.name.includes(p)))
+       || vs[0];
+}
+if('speechSynthesis' in window){ pickVoice(); speechSynthesis.onvoiceschanged=pickVoice; }
+
+const player=new Audio(); player.volume=.8;
+function speak(t,key){
+  if(!P.sound) return;
+  const src=`audio/${key}.mp3`;
+  player.pause();
+  fetch(src,{method:'HEAD'}).then(r=>{
+    if(r.ok){ player.src=src; player.play().catch(()=>{}); }
+    else tts(t);
+  }).catch(()=>tts(t));
+}
+function tts(t){
+  if(!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(t); u.lang='ko-KR'; u.rate=.8; u.pitch=1.05; u.volume=.8;
+  const u=new SpeechSynthesisUtterance(t);
+  u.lang='ko-KR'; u.rate=.78; u.pitch=1.15; u.volume=.8;
+  if(voice) u.voice=voice;
   speechSynthesis.speak(u);
 }
 function show(){
@@ -126,7 +152,7 @@ function show(){
   el.innerHTML=`<div class="figure">${item.fig}</div><div class="word">${item.w}</div><div class="sub">${item.s}</div>`;
   document.getElementById(front).classList.remove('on');
   el.classList.add('on'); front=back;
-  speak(item.w);
+  speak(item.w,item.s);
   clearTimeout(timer); timer=setTimeout(show,P.speed);
 }
 
