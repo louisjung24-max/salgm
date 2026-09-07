@@ -35,30 +35,30 @@
   .sub{margin-top:1.2vh;font-size:clamp(15px,4vw,20px);opacity:.55;letter-spacing:.1em}
 
   #handle{height:max(24px,env(safe-area-inset-bottom));flex-shrink:0}
-  #settings{position:absolute;inset:0;background:rgba(237,231,220,.97);display:none;flex-direction:column;justify-content:center;align-items:center;gap:22px;padding:28px;font-size:18px}
+  #settings{position:absolute;inset:0;background:var(--paper);z-index:7;display:none;flex-direction:column;justify-content:center;align-items:center;gap:22px;padding:28px;font-size:18px}
   #settings.open{display:flex}
   #settings h2{font-size:20px;font-weight:500;letter-spacing:.08em}
   .row{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
-  .chip{border:1.5px solid var(--ink);border-radius:999px;padding:9px 18px;background:transparent;color:var(--ink);font-size:16px}
+  .chip{border:2px solid var(--ink);border-radius:999px;padding:9px 18px;background:transparent;color:var(--ink);font-size:16px;font-weight:500}
   .chip.sel{background:var(--ink);color:var(--paper)}
-  .close{margin-top:14px;font-size:15px;opacity:.6;text-decoration:underline;background:none;border:0;color:var(--ink)}
+  .close{margin-top:14px;font-size:17px;font-weight:500;opacity:1;text-decoration:underline;background:none;border:0;color:var(--ink)}
   body.night{--paper:#2A2622;--ink:#CFC6B8;--line:#4A443D}
   body.night .figure{opacity:.82}
   body.night .t.sel{background:#fff1}
   #dim{position:absolute;inset:0;background:var(--paper);opacity:0;pointer-events:none;transition:opacity 30s linear;z-index:5}
   #dim.on{opacity:1;pointer-events:auto}
   #settings{overflow-y:auto;gap:14px}
-  #settings .lab{font-size:15px;opacity:.6;margin-top:6px}
-  #recorder{position:absolute;inset:0;background:var(--paper);display:none;flex-direction:column;padding:calc(16px + env(safe-area-inset-top)) 18px 18px;z-index:6}
+  #settings .lab{font-size:16px;opacity:1;font-weight:500;margin-top:8px}
+  #recorder{position:absolute;inset:0;background:var(--paper);display:none;flex-direction:column;padding:calc(16px + env(safe-area-inset-top)) 18px 18px;z-index:8}
   #recorder.open{display:flex}
   #recorder h2{font-size:20px;font-weight:500;letter-spacing:.08em}
-  #recCount{font-size:14px;opacity:.6;margin:6px 0 10px}
+  #recCount{font-size:15px;opacity:1;margin:6px 0 10px}
   #recList{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
-  .rc-cat{font-size:14px;opacity:.5;letter-spacing:.1em;margin:16px 0 6px}
+  .rc-cat{font-size:15px;font-weight:500;opacity:1;letter-spacing:.1em;margin:16px 0 6px}
   .rc{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
   .rc-w{flex:1;font-size:18px}
   .chip.rec{min-width:112px;font-size:14px;padding:8px 12px}
-  .chip.rec.done{border-color:var(--line);opacity:.8}
+  .chip.rec.done{opacity:1}
   .chip.rec.live{background:#CFA3A0;color:#fff;border-color:#CFA3A0}
   .chip.small{padding:8px 10px;font-size:14px}
   @media (prefers-reduced-motion:reduce){.card.on{animation-duration:.3s}}
@@ -80,7 +80,7 @@
   <div class="lab">소리</div><div class="row" id="sound"></div>
   <div class="lab">엄마·아빠 목소리</div><div class="row"><button class="chip" id="openRec">낱말 녹음하기</button></div>
   <button class="close" id="close">돌아가기</button>
-  <div class="lab" style="margin-top:4px">v10</div>
+  <div class="lab" style="margin-top:4px;font-weight:400">v11</div>
 </div>
 <div id="recorder">
   <h2>낱말 녹음</h2>
