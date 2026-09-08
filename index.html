@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#EDE7DC">
-<title>살금살금</title>
+<title>베베콩콩</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
@@ -99,13 +99,13 @@
   <div class="lab">소리</div><div class="row" id="sound"></div>
   <div class="lab">엄마·아빠 목소리</div><div class="row"><button class="chip" id="openRec">낱말 녹음하기</button></div>
   <button class="close" id="close">돌아가기</button>
-  <div class="lab" style="margin-top:4px;font-weight:400">v14</div>
+  <div class="lab" style="margin-top:4px;font-weight:400">v15</div>
 </div>
 <div id="splash">
   <div class="sp-fig">
     <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="#A9B8A3"/><circle cx="50" cy="50" r="40" fill="none" stroke="#A9B8A3" stroke-width="2" opacity=".5"/><circle cx="50" cy="50" r="48" fill="none" stroke="#A9B8A3" stroke-width="1.5" opacity=".25"/><ellipse cx="40" cy="40" rx="7" ry="4" fill="#fff" opacity=".45"/></svg>
   </div>
-  <div class="sp-title">살금살금</div>
+  <div class="sp-title">베베콩콩</div>
   <div class="sp-sub">아기의 첫 낱말 그림책</div>
   <div class="sp-hint">화면을 톡 누르면 시작해요</div>
 </div>
@@ -273,8 +273,8 @@ const LANGS={ko:{word:it=>it.w,sub:it=>it.e,tts:'ko-KR'},en:{word:it=>it.e,sub:i
 
 // ── 상태 ────────────────────────────────────────────────
 const P={topic:'전부',speed:8000,sound:true,lang:'ko',night:'auto',sleep:0};
-try{Object.assign(P,JSON.parse(localStorage.getItem('salgm')||'{}'));}catch(e){}
-const save=()=>localStorage.setItem('salgm',JSON.stringify(P));
+try{Object.assign(P,JSON.parse(localStorage.getItem('bebekk')||'{}'));}catch(e){}
+const save=()=>localStorage.setItem('bebekk',JSON.stringify(P));
 
 // ── 잠자리 모드 ─────────────────────────────────────────
 function isNight(){ if(P.night==='on') return true; if(P.night==='off') return false; const h=new Date().getHours(); return h>=19||h<7; }
@@ -319,7 +319,7 @@ const topics=document.getElementById('topics');
 topics.querySelector('.sel')?.scrollIntoView({inline:'center'});
 
 // ── 녹음 저장소 (IndexedDB, 폰 안에만 저장) ──────────────
-const DB=new Promise((res,rej)=>{const r=indexedDB.open('salgm',1);r.onupgradeneeded=()=>r.result.createObjectStore('rec');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});
+const DB=new Promise((res,rej)=>{const r=indexedDB.open('bebekk',1);r.onupgradeneeded=()=>r.result.createObjectStore('rec');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});
 const recKey=k=>`${P.lang}:${k}`;
 const recGet=k=>DB.then(db=>new Promise(res=>{const q=db.transaction('rec').objectStore('rec').get(recKey(k));q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);}));
 const recPut=(k,blob)=>DB.then(db=>new Promise(res=>{const t=db.transaction('rec','readwrite');t.objectStore('rec').put(blob,recKey(k));t.oncomplete=res;}));
